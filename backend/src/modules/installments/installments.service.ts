@@ -131,7 +131,17 @@ export const installmentsService = {
     const wantsOverdue = query.overdueOnly === true || query.status === "OVERDUE";
     if (wantsOverdue) {
       where.status = { in: ["PENDING", "PARTIALLY_PAID"] };
-      where.dueDate = { lt: calendarDateToUtc(todayCalendarDate()) };
+      const today = calendarDateToUtc(todayCalendarDate());
+      const daysBefore = (days: number) => new Date(today.getTime() - days * 86_400_000);
+      where.dueDate = { lt: today };
+      if (query.ageBucket === "1-7") {
+        where.dueDate.gte = daysBefore(7);
+      } else if (query.ageBucket === "8-30") {
+        where.dueDate.gte = daysBefore(30);
+        where.dueDate.lt = daysBefore(7);
+      } else if (query.ageBucket === "31+") {
+        where.dueDate.lt = daysBefore(30);
+      }
     } else if (query.status) {
       where.status = query.status;
     }
