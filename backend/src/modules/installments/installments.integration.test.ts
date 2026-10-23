@@ -142,6 +142,18 @@ describe("installments (integração — requer banco de teste)", () => {
     expect(result.items[0].lateCharges?.totalLateCharges).toBeGreaterThan(0);
   });
 
+  it("filtra cobranças por faixa de dias sem misturar os períodos", async () => {
+    if (!loanId) return;
+    const recent = await installmentsService.list({ overdueOnly: true, ageBucket: "1-7", page: 1, pageSize: 10 });
+    expect(recent.meta.total).toBe(1);
+    expect(recent.items[0].daysOverdue).toBe(5);
+
+    const older = await installmentsService.list({ overdueOnly: true, ageBucket: "8-30", page: 1, pageSize: 10 });
+    expect(older.meta.total).toBe(0);
+    const oldest = await installmentsService.list({ overdueOnly: true, ageBucket: "31+", page: 1, pageSize: 10 });
+    expect(oldest.meta.total).toBe(0);
+  });
+
   it("deve tratar o filtro status=OVERDUE como condição calculada", async () => {
     if (!loanId) return;
 

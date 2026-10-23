@@ -178,6 +178,8 @@ export type DashboardOverview = {
   activeClients: number;
   dueToday: number;
   dueNext7Days: number;
+  dueNext7Amount: number;
+  collectionPerformance: { scheduled: number; settled: number; rate: number | null };
   overdueInstallments: number;
   delinquencyRate: number;
   receivableInPeriod: number;

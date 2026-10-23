@@ -72,3 +72,17 @@ Dashboards aceitam consistência eventual (cache com TTL de 60s). Para leitura i
 - A métrica atual de carteira vencida é valor vencido sobre saldo total devido, **não** o indicador PAR30 de microfinanças.
 - Não é possível calcular lucro líquido ou eficiência histórica de cobrança sem dados e regras adicionais de custos, perdas e fotografia dos vencimentos por período.
 - Se houver contrato antigo já cancelado mantendo parcelas pendentes, sua correção requer conciliação dos registros existentes; a mudança preventiva não corrige retroativamente esses dados.
+
+## Dashboard operacional e realização dos vencimentos
+
+- O dashboard de entrada concentra **quatro cards**: recebido no período, valor vencido atualizado, carteira total em aberto e saldo contratual a vencer em sete dias (inclui hoje).
+- **Cumprimento dos vencimentos** é uma análise de coorte contratual, não a divisão do caixa recebido pelo previsto. O denominador soma `Installment.totalDue` das parcelas cujo vencimento ocorreu no período selecionado **até hoje** (não inclui parcelas futuras nem canceladas). O numerador soma principal + juros contratuais das alocações não estornadas feitas nessas parcelas até o final do período selecionado (ou agora, se ainda em andamento), limitado ao valor contratual de cada parcela. Multas e juros de mora não integram a taxa.
+- Pagamentos antecipados que quitaram parcelas dessa coorte são considerados, mesmo se recebidos antes do intervalo. Pagamentos de parcelas de outras datas não aumentam essa taxa. Se nenhuma parcela venceu no período, apresenta-se **sem taxa**, e não 0%.
+- O gráfico compara **entradas de caixa realizadas** no dia/mês com o **total contratual de parcelas com vencimento** no mesmo dia/mês, inclusive parcelas já quitadas. As séries não representam necessariamente os mesmos empréstimos; o gráfico serve para contexto, não para medir eficiência de cobrança.
+- As cobranças prioritárias da home são ordenadas por mais dias de atraso, com maior saldo como desempate; a central de cobranças usa vencimento mais antigo e permite busca, paginação e faixas (1–7, 8–30, 31+ dias).
+- Relatórios detalhados (composição da carteira, situação das parcelas, aging e clientes por saldo) estão em `/reports`, separados da visão inicial.
+- A nova identidade usa as imagens publicadas pelo usuário em `/frontend/public/logo-nova.jpg` e `/frontend/public/favicon-novo.jpg`.
+
+### Escopo de dados ainda não existente
+
+Um **histórico de contatos de cobrança**, acordos, promessas de pagamento ou o **capital realmente disponível no caixa** exigem novas entidades, fluxos operacionais, regras de acesso e reconciliação. Nenhum desses valores é inferido indevidamente dos saldos de parcelas.
