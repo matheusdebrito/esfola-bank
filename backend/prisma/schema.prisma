@@ -227,7 +227,7 @@ model Loan {
   policy           FinancialPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
   installments     Installment[]
   payments         Payment[]
-  disbursement     FinanceEntry? @relation("LoanDisbursement")
+  disbursements    FinanceEntry[] @relation("LoanDisbursement")
 
   @@index([clientId])
   @@index([userId])
@@ -391,7 +391,7 @@ model FinanceEntry {
   amount         Decimal         @db.Decimal(14, 2)
   effectiveAt    DateTime        @db.Timestamptz
   description    String          @db.VarChar(500)
-  loanId         String?         @unique @db.Uuid
+  loanId         String?         @db.Uuid
   idempotencyKey String?         @unique @db.VarChar(128)
   createdById    String          @db.Uuid
   createdAt      DateTime        @default(now()) @db.Timestamptz
