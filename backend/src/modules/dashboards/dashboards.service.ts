@@ -271,6 +271,7 @@ async overview(query: DashboardQuery) {
       dueNext7Rows,
       receivableThisMonthRows,
       installmentStatusRows,
+      receivedBreakdownRows,
     ] = await Promise.all([
       prisma.$queryRaw<{ sum: string }[]>`
         SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"
@@ -304,6 +305,13 @@ async overview(query: DashboardQuery) {
 
       prisma.$queryRaw<{ status: string; c: bigint }[]>`
         SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
+      prisma.$queryRaw<{ principal: string; interest: string; charges: string }[]>`
+        SELECT COALESCE(SUM(a."principalAmount"), 0) AS principal,
+               COALESCE(SUM(a."interestAmount"), 0) AS interest,
+               COALESCE(SUM(a."chargesAmount"), 0) AS charges
+        FROM "PaymentAllocation" a
+        JOIN "Payment" p ON p."id" = a."paymentId"
+        WHERE p."status" = 'REGISTERED' AND p."receivedAt" >= ${periodFrom} AND p."receivedAt" <= ${periodTo}`,
     ]);
 
     const { totalOverdue, totalLateCharges } = summarizeOverdueInstallments(overdueInstallments);
@@ -495,6 +503,9 @@ async overview(query: DashboardQuery) {
       openPortfolio,
       receivedTotal: totalReceived,
       interestReceived: Number(interestRows[0]?.sum ?? 0),
+      receivedPrincipal: Number(receivedBreakdownRows[0]?.principal ?? 0),
+      receivedInterest: Number(receivedBreakdownRows[0]?.interest ?? 0),
+      receivedCharges: Number(receivedBreakdownRows[0]?.charges ?? 0),
       overdueAmount: totalOverdue,
       activeLoans: Number(activeLoansRows[0]?.c ?? 0),
       activeClients: Number(activeClientsRows[0]?.c ?? 0),
@@ -503,6 +514,8 @@ async overview(query: DashboardQuery) {
       overdueInstallments: overdueInstallments.length,
       delinquencyRate: Math.round(delinquencyRate * 100) / 100,
       receivableInPeriod: Number(receivableThisMonthRows[0]?.sum ?? 0),
+      overdueClients: new Set(overdueInstallments.map((i) => i.clientId)).size,
+      lateChargesOutstanding: totalLateCharges,
       // Charts
       receiptsSeries,
       financialFlow,
