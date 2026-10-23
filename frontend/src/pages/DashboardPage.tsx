@@ -56,11 +56,11 @@ const PERIOD_OPTIONS = [
 
 function periodToRange(period: string, customFrom: string, customTo: string): { from: string; to: string } {
   const tz = "America/Sao_Paulo";
-  const offset = "-03:00";
   const today = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD in Brasília
 
-  const startOfDay = (dateStr: string) => `${dateStr}T00:00:00${offset}`;
-  const endOfDay = (dateStr: string) => `${dateStr}T23:59:59.999${offset}`;
+  // Brasília is UTC-3 (no DST). Convert Brasília date to UTC ISO string.
+  const startOfDay = (dateStr: string) => new Date(`${dateStr}T00:00:00-03:00`).toISOString();
+  const endOfDay = (dateStr: string) => new Date(`${dateStr}T23:59:59.999-03:00`).toISOString();
 
   switch (period) {
     case "today":
