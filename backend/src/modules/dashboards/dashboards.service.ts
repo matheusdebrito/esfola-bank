@@ -332,9 +332,7 @@ async overview(query: DashboardQuery) {
       statusMap[row.status] = Number(row.c);
     }
     const overdueCount = overdueInstallments.length;
-    const overduePartialCount = await prisma.installment.count({
-      where: { status: "PARTIALLY_PAID", dueDate: { lt: calendarDateToUtc(todayStr) } },
-    });
+    const overduePartialCount = overdueInstallments.filter((item) => item.status === "PARTIALLY_PAID").length;
     const overduePendingCount = overdueCount - overduePartialCount;
     const installmentStatus = {
       paid: statusMap.PAID ?? 0,
