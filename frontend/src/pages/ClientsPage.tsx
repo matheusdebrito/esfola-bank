@@ -16,6 +16,7 @@ import { SimpleTable } from "@/components/SimpleTable";
 import { Pagination } from "@/components/Pagination";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import { Client, ClientDocument } from "@/types/api";
+import { useAuth } from "@/hooks/useAuth";
 
 type DocType = "RG" | "PROOF_OF_ADDRESS";
 type PendingDocument = { file: File; type: DocType };
@@ -61,6 +62,7 @@ async function uploadDocument(clientId: string, pending: PendingDocument) {
 export default function ClientsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -88,13 +90,13 @@ export default function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [urlParams, setUrlParams] = useSearchParams();
   useEffect(() => {
-    if (urlParams.get("new") === "1") {
+    if (urlParams.get("new") === "1" && can("clients:create")) {
       setEditing(null);
       setForm(emptyForm);
       setOpen(true);
       setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
     }
-  }, [urlParams, setUrlParams]);
+  }, [urlParams, setUrlParams, can]);
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [loanDialog, setLoanDialog] = useState<{ client: Client; loans: any[]; loading: boolean } | null>(null);
@@ -270,7 +272,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Clientes</h1>
           <p className="mt-1 text-sm text-muted-foreground">Cadastros, contatos e histórico de contratos.</p>
         </div>
-        <Button onClick={openCreate}>Novo cliente</Button>
+        {can("clients:create") && <Button onClick={openCreate}>Novo cliente</Button>}
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -298,11 +300,11 @@ export default function ClientsPage() {
                 label: "",
                 render: (_v, row) => (
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(row)}>Editar</Button>
+                    {can("clients:update") && <Button variant="outline" size="sm" onClick={() => openEdit(row)}>Editar</Button>}
                     <Button variant="outline" size="sm" onClick={() => openClientLoans(row)}>
                       Ver empréstimos
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(row)}>Excluir</Button>
+                    {can("clients:delete") && <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(row)}>Excluir</Button>}
                   </div>
                 ),
               },
