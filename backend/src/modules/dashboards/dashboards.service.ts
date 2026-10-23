@@ -7,6 +7,7 @@ import {
   todayCalendarDate,
 } from "../../shared/calendar";
 import type { DashboardQuery } from "./dashboards.schema";
+import { loadOverdueInstallments, summarizeOverdueInstallments } from "./overdue-balances";
 
 const DASHBOARD_TTL = 60; // segundos
 
@@ -28,14 +29,6 @@ function periodFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql
   return Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 }
 
-function overdueCondition(alias = ""): Prisma.Sql {
-  const column = (name: string) => Prisma.raw(`${alias}"${name}"`);
-  return Prisma.sql`${column("status")} IN ('PENDING', 'PARTIALLY_PAID')
-  AND (${column("dueDate")} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date`;
-}
-
-const OVERDUE_CONDITION = overdueCondition();
-
 const OPEN_CONDITION = Prisma.sql`"status" IN ('PENDING', 'PARTIALLY_PAID')`;
 
 export const dashboardsService = {
@@ -51,8 +44,7 @@ export const dashboardsService = {
       totalGrantedRows,
       activeLoansRows,
       activeClientsRows,
-      overdueRows,
-      overdueCountRows,
+      overdueInstallments,
       receivedRows,
       interestRows,
       portfolioRows,
@@ -61,9 +53,7 @@ export const dashboardsService = {
         SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan" ${grantedWhere}`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Loan" WHERE "status" = 'ACTIVE'`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
-      prisma.$queryRaw<{ sum: string }[]>`
-        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
-      prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
+      loadOverdueInstallments(),
       prisma.$queryRaw<{ sum: string }[]>`
         SELECT COALESCE(SUM("receivedAmount"), 0) AS sum FROM "Payment"
         WHERE "status" = 'REGISTERED' ${receivedWhere}`,
@@ -76,9 +66,9 @@ export const dashboardsService = {
         SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment" WHERE ${OPEN_CONDITION}`,
     ]);
 
-    const totalOverdue = Number(overdueRows[0]?.sum ?? 0);
+    const { totalOverdue, totalLateCharges } = summarizeOverdueInstallments(overdueInstallments);
     const totalReceived = Number(receivedRows[0]?.sum ?? 0);
-    const openPortfolio = Number(portfolioRows[0]?.sum ?? 0);
+    const openPortfolio = Number(portfolioRows[0]?.sum ?? 0) + totalLateCharges;
     // Inadimplência = valor vencido / carteira em aberto (não sobre o recebido).
     const delinquencyRate = openPortfolio > 0 ? (totalOverdue / openPortfolio) * 100 : 0;
 
@@ -89,7 +79,7 @@ export const dashboardsService = {
       overdueAmount: totalOverdue,
       receivedTotal: totalReceived,
       interestReceived: Number(interestRows[0]?.sum ?? 0),
-      overdueInstallments: Number(overdueCountRows[0]?.c ?? 0),
+      overdueInstallments: overdueInstallments.length,
       openPortfolio,
       delinquencyRate: Math.round(delinquencyRate * 100) / 100,
     };
@@ -122,42 +112,22 @@ export const dashboardsService = {
   },
 
   async defaults(_query: DashboardQuery) {
-    const overdue = await prisma.$queryRaw<
-      {
-        clientId: string;
-        clientName: string;
-        number: number;
-        dueDate: Date;
-        totalDue: string;
-        remainingBalance: string;
-      }[]
-    >`
-      SELECT l."clientId" AS "clientId",
-             c."name" AS "clientName",
-             i."number" AS "number",
-             i."dueDate" AS "dueDate",
-             i."totalDue" AS "totalDue",
-             i."remainingBalance" AS "remainingBalance"
-      FROM "Installment" i
-      JOIN "Loan" l ON i."loanId" = l."id"
-      JOIN "Client" c ON l."clientId" = c."id"
-      WHERE ${overdueCondition('i.')}
-      ORDER BY i."dueDate" ASC
-      LIMIT 100`;
-
-    const totalOverdue = overdue.reduce((sum, row) => sum + Number(row.remainingBalance), 0);
-
+    const overdue = await loadOverdueInstallments();
+    const { totalOverdue } = summarizeOverdueInstallments(overdue);
     return {
       overdueInstallments: overdue.length,
       overdueAmount: totalOverdue,
       clientsInDefault: new Set(overdue.map((row) => row.clientId)).size,
-      items: overdue.map((row) => ({
+      items: overdue.slice(0, 100).map((row) => ({
         clientId: row.clientId,
         clientName: row.clientName,
-        installmentNumber: row.number,
+        installmentNumber: row.installmentNumber,
         dueDate: row.dueDate,
-        totalDue: Number(row.totalDue),
-        remainingBalance: Number(row.remainingBalance),
+        totalDue: row.totalDue,
+        remainingBalance: row.remainingBalance,
+        updatedRemainingBalance: row.updatedRemainingBalance,
+        lateCharges: row.lateCharges,
+        daysOverdue: row.daysOverdue,
       })),
     };
   },
@@ -226,23 +196,19 @@ export const dashboardsService = {
     const monthEnd = calendarDateToUtc(monthEndDate);
     const todayStart = calendarDateToUtc(today);
 
-    const [grantedRows, clientsRows, dueRows, overdueRows] = await Promise.all([
+    const [grantedRows, clientsRows, dueRows, overdueInstallments] = await Promise.all([
       prisma.$queryRaw<{ sum: string }[]>`SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
       prisma.$queryRaw<{ c: bigint; sum: string }[]>`
         SELECT COUNT(*) AS c, COALESCE(SUM("totalDue"), 0) AS sum
         FROM "Installment"
         WHERE ${OPEN_CONDITION} AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}`,
-      prisma.$queryRaw<{ c: bigint; sum: string }[]>`
-        SELECT COUNT(*) AS c, COALESCE(SUM("remainingBalance"), 0) AS sum
-        FROM "Installment"
-        WHERE ${OPEN_CONDITION}
-          AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}
-          AND "dueDate" < ${todayStart}`,
+      loadOverdueInstallments(today),
     ]);
 
     const dueCount = Number(dueRows[0]?.c ?? 0);
-    const overdueCount = Number(overdueRows[0]?.c ?? 0);
+    const overdueThisMonth = overdueInstallments.filter((row) => row.dueDate >= monthStart && row.dueDate < monthEnd);
+    const overdueCount = overdueThisMonth.length;
 
     const result = {
       totalGranted: Number(grantedRows[0]?.sum ?? 0),
@@ -250,7 +216,7 @@ export const dashboardsService = {
       receivableThisMonth: Number(dueRows[0]?.sum ?? 0),
       dueInstallmentsThisMonth: dueCount,
       overdueInstallmentsThisMonth: overdueCount,
-      overdueAmountThisMonth: Number(overdueRows[0]?.sum ?? 0),
+      overdueAmountThisMonth: summarizeOverdueInstallments(overdueThisMonth).totalOverdue,
       currentInstallmentsThisMonth: Math.max(0, dueCount - overdueCount),
       monthStart: monthStart.toISOString(),
       monthEnd: monthEnd.toISOString(),
@@ -297,8 +263,7 @@ async overview(query: DashboardQuery) {
       totalGrantedRows,
       activeLoansRows,
       activeClientsRows,
-      overdueRows,
-      overdueCountRows,
+      overdueInstallments,
       receivedRows,
       interestRows,
       portfolioRows,
@@ -313,9 +278,7 @@ async overview(query: DashboardQuery) {
           AND "grantedAt" >= ${periodFrom} AND "grantedAt" <= ${periodTo}`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Loan" WHERE "status" = 'ACTIVE'`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
-      prisma.$queryRaw<{ sum: string }[]>`
-        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
-      prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
+      loadOverdueInstallments(),
       prisma.$queryRaw<{ sum: string }[]>`
         SELECT COALESCE(SUM("receivedAmount"), 0) AS sum FROM "Payment"
         WHERE "status" = 'REGISTERED' AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}`,
@@ -343,9 +306,9 @@ async overview(query: DashboardQuery) {
         SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
     ]);
 
-    const totalOverdue = Number(overdueRows[0]?.sum ?? 0);
+    const { totalOverdue, totalLateCharges } = summarizeOverdueInstallments(overdueInstallments);
     const totalReceived = Number(receivedRows[0]?.sum ?? 0);
-    const openPortfolio = Number(portfolioRows[0]?.sum ?? 0);
+    const openPortfolio = Number(portfolioRows[0]?.sum ?? 0) + totalLateCharges;
     const delinquencyRate = openPortfolio > 0 ? (totalOverdue / openPortfolio) * 100 : 0;
 
     // installmentStatus (mutually exclusive)
@@ -353,7 +316,7 @@ async overview(query: DashboardQuery) {
     for (const row of installmentStatusRows) {
       statusMap[row.status] = Number(row.c);
     }
-    const overdueCount = Number(overdueCountRows[0]?.c ?? 0);
+    const overdueCount = overdueInstallments.length;
     const installmentStatus = {
       paid: statusMap.PAID ?? 0,
       pending: Math.max(0, (statusMap.PENDING ?? 0) - overdueCount),
@@ -362,32 +325,22 @@ async overview(query: DashboardQuery) {
       canceled: statusMap.CANCELED ?? 0,
     };
 
-    // --- Aging ---
-    const agingRows = await prisma.$queryRaw<{ bucket: string; amount: string; count: bigint }[]>`
-      SELECT
-        CASE
-          WHEN days_overdue <= 30 THEN '0-30 dias'
-          WHEN days_overdue <= 60 THEN '31-60 dias'
-          WHEN days_overdue <= 90 THEN '61-90 dias'
-          ELSE '90+ dias'
-        END AS bucket,
-        COALESCE(SUM("remainingBalance"), 0) AS amount,
-        COUNT(*) AS count
-      FROM (
-        SELECT "remainingBalance",
-          (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date - ("dueDate" AT TIME ZONE 'UTC')::date AS days_overdue
-        FROM "Installment"
-        WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
-          AND ("dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
-      ) sub
-      GROUP BY 1
-      ORDER BY 1`;
+    // --- Aging: utilizar os mesmos saldos corrigidos do KPI ---
     const agingBuckets = ["0-30 dias", "31-60 dias", "61-90 dias", "90+ dias"];
-    const agingMap = new Map(agingRows.map((r) => [r.bucket, { amount: Number(r.amount), count: Number(r.count) }]));
-    const aging = agingBuckets.map((b) => ({
-      bucket: b,
-      amount: agingMap.get(b)?.amount ?? 0,
-      count: agingMap.get(b)?.count ?? 0,
+    const agingMap = new Map<string, { cents: number; count: number }>();
+    for (const row of overdueInstallments) {
+      const bucket = row.daysOverdue <= 30 ? agingBuckets[0]
+        : row.daysOverdue <= 60 ? agingBuckets[1]
+        : row.daysOverdue <= 90 ? agingBuckets[2] : agingBuckets[3];
+      const current = agingMap.get(bucket) ?? { cents: 0, count: 0 };
+      current.cents += Math.round(row.updatedRemainingBalance * 100);
+      current.count++;
+      agingMap.set(bucket, current);
+    }
+    const aging = agingBuckets.map((bucket) => ({
+      bucket,
+      amount: (agingMap.get(bucket)?.cents ?? 0) / 100,
+      count: agingMap.get(bucket)?.count ?? 0,
     }));
 
     // --- Top clients ---
@@ -407,14 +360,20 @@ async overview(query: DashboardQuery) {
       JOIN "Client" c ON l."clientId" = c."id"
       WHERE i."status" IN ('PENDING', 'PARTIALLY_PAID')
       GROUP BY l."clientId", c."name"
-      ORDER BY "outstandingBalance" DESC
-      LIMIT 5`;
-    const topClients = topClientsRows.map((r) => ({
-      clientId: r.clientId,
-      clientName: r.clientName,
-      outstandingBalance: Number(r.outstandingBalance),
-      overdueAmount: Number(r.overdueAmount),
-    }));
+      ORDER BY "outstandingBalance" DESC`;
+    const lateChargesByClient = new Map<string, number>();
+    for (const row of overdueInstallments) {
+      lateChargesByClient.set(row.clientId, (lateChargesByClient.get(row.clientId) ?? 0) + Math.round(row.lateCharges * 100));
+    }
+    const topClients = topClientsRows.map((r) => {
+      const extraCents = lateChargesByClient.get(r.clientId) ?? 0;
+      return {
+        clientId: r.clientId,
+        clientName: r.clientName,
+        outstandingBalance: (Math.round(Number(r.outstandingBalance) * 100) + extraCents) / 100,
+        overdueAmount: (Math.round(Number(r.overdueAmount) * 100) + extraCents) / 100,
+      };
+    }).sort((a, b) => b.outstandingBalance - a.outstandingBalance).slice(0, 5);
 
     // --- Upcoming due (next 10) ---
     const upcomingDueRows = await prisma.$queryRaw<{
@@ -452,38 +411,15 @@ async overview(query: DashboardQuery) {
     }));
 
     // --- Overdue list (top 10) ---
-    const overdueListRows = await prisma.$queryRaw<{
-      clientId: string;
-      clientName: string;
-      loanCode: string;
-      installmentNumber: number;
-      dueDate: Date;
-      remainingBalance: string;
-    }[]>`
-      SELECT
-        l."clientId" AS "clientId",
-        c."name" AS "clientName",
-        l."code" AS "loanCode",
-        i."number" AS "installmentNumber",
-        i."dueDate" AS "dueDate",
-        i."remainingBalance" AS "remainingBalance"
-      FROM "Installment" i
-      JOIN "Loan" l ON i."loanId" = l."id"
-      JOIN "Client" c ON l."clientId" = c."id"
-      WHERE i."status" IN ('PENDING', 'PARTIALLY_PAID')
-        AND (i."dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
-      ORDER BY i."dueDate" ASC
-      LIMIT 10`;
-    const overdueList = overdueListRows.map((r) => ({
-      clientId: r.clientId,
-      clientName: r.clientName,
-      loanCode: r.loanCode,
-      installmentNumber: r.installmentNumber,
-      dueDate: r.dueDate,
-      remainingBalance: Number(r.remainingBalance),
-      daysOverdue: Math.max(0, Math.floor(
-        (Date.now() - new Date(r.dueDate).getTime()) / 86_400_000,
-      )),
+    const overdueList = overdueInstallments.slice(0, 10).map((row) => ({
+      clientId: row.clientId,
+      clientName: row.clientName,
+      loanCode: row.loanCode,
+      installmentNumber: row.installmentNumber,
+      dueDate: row.dueDate,
+      updatedRemainingBalance: row.updatedRemainingBalance,
+      lateCharges: row.lateCharges,
+      daysOverdue: row.daysOverdue,
     }));
 
     // --- Receipts series (daily for period) ---
@@ -560,7 +496,7 @@ async overview(query: DashboardQuery) {
       activeClients: Number(activeClientsRows[0]?.c ?? 0),
       dueToday: Number(dueTodayRows[0]?.c ?? 0),
       dueNext7Days: Number(dueNext7Rows[0]?.c ?? 0),
-      overdueInstallments: Number(overdueCountRows[0]?.c ?? 0),
+      overdueInstallments: overdueInstallments.length,
       delinquencyRate: Math.round(delinquencyRate * 100) / 100,
       receivableInPeriod: Number(receivableThisMonthRows[0]?.sum ?? 0),
       // Charts
