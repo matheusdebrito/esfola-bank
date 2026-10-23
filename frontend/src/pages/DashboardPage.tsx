@@ -156,6 +156,7 @@ export default function DashboardPage() {
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["dashboards", "overview", range.from, range.to],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ from: range.from, to: range.to });
       const res = await api.get(`/api/v1/dashboards/overview?${params.toString()}`);
@@ -485,7 +486,8 @@ export default function DashboardPage() {
                   { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
                   { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
                   { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                  { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                  { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
+                  { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
                   { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
                 ]}
                 data={overdueList}
