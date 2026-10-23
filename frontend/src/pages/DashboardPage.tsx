@@ -129,6 +129,7 @@ function KpiCard({
 function formatMonth(value: string) {
   const [y, m] = value.split("-");
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  if (!y || !m || value.length !== 7) return value;
   return months[Number(m) - 1] ? `${months[Number(m) - 1]}/${y.slice(2)}` : value;
 }
 
@@ -179,6 +180,7 @@ export default function DashboardPage() {
 
   const d = data ?? ({} as DashboardOverview);
   const financialFlow = Array.isArray(d.financialFlow) ? d.financialFlow : [];
+  const flowLabel = (value: string) => value.length === 7 ? formatMonth(value) : formatDay(value);
   const receiptsSeries = Array.isArray(d.receiptsSeries) ? d.receiptsSeries : [];
   const portfolioComposition = Array.isArray(d.portfolioComposition) ? d.portfolioComposition : [];
   const aging = Array.isArray(d.aging) ? d.aging : [];
@@ -218,7 +220,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">Indicadores gerenciais em tempo real.</p>
+          <p className="text-sm text-muted-foreground">Entradas no período e posição atual da carteira · atualização periódica.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
@@ -235,22 +237,108 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Destaques operacionais: informações que direcionam cobrança e caixa. */}
+      <h3 className="text-sm font-semibold text-muted-foreground">Operação e recebimentos</h3>
       <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        <KpiCard title="Capital emprestado" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
-        <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} />
-        <KpiCard title="Recebido" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} sub="no período" variant="success" />
-        <KpiCard title="Juros recebidos" value={brl(d.interestReceived ?? 0)} icon={Percent} sub="no período" />
-        <KpiCard title="Valor vencido" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} variant="danger" />
-        <KpiCard title="Inadimplência" value={percent(d.delinquencyRate ?? 0)} icon={Target} variant={d.delinquencyRate && d.delinquencyRate > 10 ? "danger" : "default"} />
-        <KpiCard title="Empréstimos ativos" value={String(d.activeLoans ?? 0)} icon={Briefcase} />
-        <KpiCard title="Clientes ativos" value={String(d.activeClients ?? 0)} icon={Users} />
-        <KpiCard title="Vencem hoje" value={String(d.dueToday ?? 0)} icon={CalendarClock} />
-        <KpiCard title="Vencem em 7 dias" value={String(d.dueNext7Days ?? 0)} icon={Clock} />
-        <KpiCard title="Parcelas atrasadas" value={String(d.overdueInstallments ?? 0)} icon={AlertTriangle} variant="danger" />
-        <KpiCard title="A receber" value={brl(d.receivableInPeriod ?? 0)} icon={DollarSign} sub="no período" />
+        <KpiCard title="Recebido no período" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} variant="success" />
+        <KpiCard title="Vencido hoje" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} sub="posição atual · com encargos" variant="danger" />
+        <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} sub="posição atual · com encargos" />
+        <KpiCard title="A receber no período" value={brl(d.receivableInPeriod ?? 0)} icon={CalendarClock} sub="saldo contratual com vencimento no período" />
+        <KpiCard title="Capital concedido" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
+        <KpiCard title="Carteira vencida (%)" value={percent(d.delinquencyRate ?? 0)} icon={Target} sub="valor vencido / carteira em aberto" variant={d.delinquencyRate && d.delinquencyRate > 10 ? "danger" : "default"} />
+            </div>
+
+      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+        <Badge variant="secondary">Parcelas atrasadas: {d.overdueInstallments ?? 0}</Badge>
+        <Badge variant="secondary">Clientes em atraso: {d.overdueClients ?? 0}</Badge>
+        <Badge variant="secondary">Vencem hoje: {d.dueToday ?? 0}</Badge>
+        <Badge variant="secondary">Vencem em 7 dias: {d.dueNext7Days ?? 0}</Badge>
+        <Badge variant="secondary">Juros recebidos: {brl(d.receivedInterest ?? 0)}</Badge>
+        <Badge variant="secondary">Multas e mora recebidas: {brl(d.receivedCharges ?? 0)}</Badge>
       </div>
 
+      <h3 className="text-sm font-semibold text-muted-foreground">Cobranças e vencimentos</h3>
+      {/* Operational Tables */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Upcoming Due */}
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Próximos vencimentos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Pesquisar por empréstimo, cliente..."
+                value={upcomingSearch}
+                onChange={(e) => { setUpcomingSearch(e.target.value); setUpcomingPage(1); }}
+                className="max-w-sm"
+              />
+            </div>
+            {upcomingLoading ? (
+              <div className="flex h-20 items-center justify-center">
+                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : upcomingDue.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
+            ) : (
+              <>
+                <SimpleTable
+                  columns={[
+                    { key: "clientName", label: "Cliente" },
+                    { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
+                    { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
+                    { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
+                    { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                  ]}
+                  data={upcomingDue}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <select
+                    value={upcomingPageSize}
+                    onChange={(e) => { setUpcomingPageSize(Number(e.target.value)); setUpcomingPage(1); }}
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value={10}>10 por página</option>
+                    <option value={20}>20 por página</option>
+                    <option value={50}>50 por página</option>
+                    <option value={100}>100 por página</option>
+                  </select>
+                  <Pagination page={upcomingPage} totalPages={upcomingMeta?.totalPages ?? 1} onPageChange={setUpcomingPage} />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Overdue List */}
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Cobranças prioritárias · parcelas em atraso</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overdueList.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma parcela em atraso.</p>
+            ) : (
+              <SimpleTable
+                columns={[
+                  { key: "clientName", label: "Cliente" },
+                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
+                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
+                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
+                  { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
+                  { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
+                  { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
+                  { key: "loanCode", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => window.location.assign(`/loans?search=${encodeURIComponent(row.loanCode)}`)}>Abrir</Button> },
+                ]}
+                data={overdueList}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+
+      <h3 className="text-sm font-semibold text-muted-foreground">Análise financeira</h3>
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Financial Flow */}
@@ -269,9 +357,9 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={financialFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickFormatter={formatMonth} tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tickFormatter={flowLabel} tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={formatMonth} />
+                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={flowLabel} />
                   <Legend />
                   <Bar dataKey="granted" name="Capital emprestado" fill="#2563eb" radius={[2, 2, 0, 0]} />
                   <Bar dataKey="received" name="Recebido" fill="#059669" radius={[2, 2, 0, 0]} />
@@ -418,84 +506,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       ) : null}
-
-      {/* Operational Tables */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Upcoming Due */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Próximos vencimentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <Input
-                placeholder="Pesquisar por empréstimo, cliente..."
-                value={upcomingSearch}
-                onChange={(e) => { setUpcomingSearch(e.target.value); setUpcomingPage(1); }}
-                className="max-w-sm"
-              />
-            </div>
-            {upcomingLoading ? (
-              <div className="flex h-20 items-center justify-center">
-                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : upcomingDue.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
-            ) : (
-              <>
-                <SimpleTable
-                  columns={[
-                    { key: "clientName", label: "Cliente" },
-                    { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
-                    { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
-                    { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                    { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
-                  ]}
-                  data={upcomingDue}
-                />
-                <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <select
-                    value={upcomingPageSize}
-                    onChange={(e) => { setUpcomingPageSize(Number(e.target.value)); setUpcomingPage(1); }}
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value={10}>10 por página</option>
-                    <option value={20}>20 por página</option>
-                    <option value={50}>50 por página</option>
-                    <option value={100}>100 por página</option>
-                  </select>
-                  <Pagination page={upcomingPage} totalPages={upcomingMeta?.totalPages ?? 1} onPageChange={setUpcomingPage} />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Overdue List */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Parcelas em atraso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overdueList.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma parcela em atraso.</p>
-            ) : (
-              <SimpleTable
-                columns={[
-                  { key: "clientName", label: "Cliente" },
-                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
-                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
-                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                  { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
-                  { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
-                  { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
-                ]}
-                data={overdueList}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
