@@ -38,6 +38,11 @@ Calculados por parcela vencida:
 - Juros de mora: `overdueAmount × (dailyLateInterestPercent / 100) × dias faturáveis`.
 - Dias faturáveis = dias de atraso além de `toleranceDays`.
 - A baixa manual pela lista de parcelas (`POST /installments/:id/pay`) cobra o saldo da parcela + encargos de atraso.
+- O `totalDue` permanece como valor original da parcela. `updatedTotalDue` reflete esse
+  original acrescido de encargos já pagos e dos encargos correntes; `updatedRemainingBalance`
+  indica quanto falta pagar hoje (saldo contratual restante + encargos correntes).
+- Os valores atualizados são calculados na consulta; não é necessário nem correto
+  adicionar juros ao saldo contratual persistido a cada dia.
 
 ## Pagamentos e alocações
 

@@ -50,6 +50,7 @@ export default function LoanDetailPage() {
 
   const { data: installments, isLoading: instLoading } = useQuery({
     queryKey: QUERY_KEYS.installments.byLoan(loanId ?? ""),
+    refetchInterval: 60_000,
     queryFn: async () => {
       const res = await api.get(`/api/v1/installments?loanId=${loanId}&page=1&pageSize=100`);
       return res.data.data.items as Installment[];
@@ -90,9 +91,9 @@ export default function LoanDetailPage() {
   if (!loan) return <div className="p-4 text-red-600">Empréstimo não encontrado</div>;
 
   const insts = installments ?? [];
-  const totalDue = insts.reduce((s, i) => s + Number(i.totalDue), 0);
+  const totalDue = insts.reduce((s, i) => s + Number(i.updatedTotalDue), 0);
   const paidTotal = insts.reduce((s, i) => s + Number(i.paidAmount), 0);
-  const remainingTotal = insts.reduce((s, i) => s + Number(i.remainingBalance), 0);
+  const remainingTotal = insts.reduce((s, i) => s + Number(i.updatedRemainingBalance), 0);
 
   return (
     <div className="space-y-6">
@@ -147,7 +148,7 @@ export default function LoanDetailPage() {
         <CardContent className="border-t pt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Total devido</p>
+              <p className="text-xs text-muted-foreground">Total devido atualizado</p>
               <p className="font-semibold">{brl(totalDue)}</p>
             </div>
             <div className="space-y-1">
@@ -155,7 +156,7 @@ export default function LoanDetailPage() {
               <p className="font-semibold">{brl(paidTotal)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Saldo em aberto</p>
+              <p className="text-xs text-muted-foreground">Em aberto atualizado</p>
               <p className="font-semibold">{brl(remainingTotal)}</p>
             </div>
           </div>
@@ -182,9 +183,9 @@ export default function LoanDetailPage() {
               { key: "clientName", label: "Cliente", render: (v) => v ?? "-" },
               { key: "number", label: "Nº" },
               { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-              { key: "totalDue", label: "Devido", render: (v) => brl(Number(v)) },
+              { key: "totalDue", label: "Original", render: (v) => brl(Number(v)) },
+              { key: "updatedTotalDue", label: "Devido", render: (v) => brl(Number(v)) },
               { key: "paidAmount", label: "Pago", render: (v) => brl(Number(v)) },
-              { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
               { key: "lateCharges", label: "Encargos", render: (v) => brl(Number((v as any)?.totalLateCharges ?? 0)) },
               { key: "status", label: "Status", render: (_v, row) => installmentStatusLabel(row.effectiveStatus ?? row.status) },
               { key: "daysOverdue", label: "Atraso (dias)" },

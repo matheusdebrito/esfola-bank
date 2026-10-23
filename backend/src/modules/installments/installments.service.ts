@@ -23,8 +23,10 @@ type SafeInstallment = {
   interestDue: number;
   chargesDue: number;
   totalDue: number;
+  updatedTotalDue: number;
   paidAmount: number;
   remainingBalance: number;
+  updatedRemainingBalance: number;
   status: string;
   effectiveStatus: string;
   isOverdue: boolean;
@@ -70,14 +72,51 @@ function toSafeInstallment(inst: any): SafeInstallment {
     interestDue: Number(inst.interestDue),
     chargesDue: Number(inst.chargesDue),
     totalDue: Number(inst.totalDue),
+    updatedTotalDue: Number(inst.totalDue),
     paidAmount: Number(inst.paidAmount),
     remainingBalance: Number(inst.remainingBalance),
+    updatedRemainingBalance: Number(inst.remainingBalance),
     status: inst.status,
     effectiveStatus: resolveEffectiveStatus(inst.status, daysOverdue),
     isOverdue: daysOverdue > 0,
     daysOverdue,
     lateCharges: null, // preenchido pelo service quando necessário
   };
+}
+
+/**
+ * Os saldos persistidos são contratuais. Expomos os valores atualizados sem
+ * gravar encargos variáveis (nem alterar o valor original da parcela).
+ * paidAmount inclui encargos já recebidos; preservá-los evita que parcelas
+ * pagas em atraso voltem a exibir um total menor que o efetivamente pago.
+ */
+function enrichInstallment(inst: any): SafeInstallment {
+  const safe = toSafeInstallment(inst);
+  let currentChargesCents = 0;
+
+  if (safe.daysOverdue > 0 && inst.loan.policy) {
+    const late = calculateLateCharges({
+      overdueAmount: safe.remainingBalance,
+      daysOverdue: safe.daysOverdue,
+      policy: inst.loan.policy,
+    });
+    safe.lateCharges = {
+      lateFee: late.lateFee,
+      lateInterest: late.lateInterest,
+      totalLateCharges: late.totalLateCharges,
+    };
+    currentChargesCents = Math.round(late.totalLateCharges * 100);
+  }
+
+  const originalCents = Math.round(safe.totalDue * 100);
+  const remainingCents = Math.round(safe.remainingBalance * 100);
+  const paidCents = Math.round(safe.paidAmount * 100);
+  const paidContractualCents = Math.max(0, originalCents - remainingCents);
+  const alreadyPaidChargesCents = Math.max(0, paidCents - paidContractualCents);
+
+  safe.updatedTotalDue = (originalCents + alreadyPaidChargesCents + currentChargesCents) / 100;
+  safe.updatedRemainingBalance = (remainingCents + currentChargesCents) / 100;
+  return safe;
 }
 
 export const installmentsService = {
@@ -134,31 +173,8 @@ export const installmentsService = {
       prisma.installment.count({ where }),
     ]);
 
-    // calcular atraso e encargos de mora para parcelas vencidas
-    const enriched = await Promise.all(
-      installments.map(async (inst) => {
-        const safe = toSafeInstallment(inst);
-        if (safe.daysOverdue > 0 && inst.loan.policy) {
-          const policy = inst.loan.policy as any;
-          const late = calculateLateCharges({
-            overdueAmount: safe.remainingBalance,
-            daysOverdue: safe.daysOverdue,
-            policy: {
-              lateFeeAmount: policy.lateFeeAmount,
-              dailyLateInterestPercent: policy.dailyLateInterestPercent,
-              toleranceDays: policy.toleranceDays,
-              roundingMode: policy.roundingMode,
-            },
-          });
-          safe.lateCharges = {
-            lateFee: late.lateFee,
-            lateInterest: late.lateInterest,
-            totalLateCharges: late.totalLateCharges,
-          };
-        }
-        return safe;
-      }),
-    );
+    // Encargos calculados na leitura; não alteram o saldo contratual gravado.
+    const enriched = installments.map(enrichInstallment);
 
     return {
       items: enriched,
@@ -186,20 +202,7 @@ export const installmentsService = {
       throw new NotFoundError("Parcela não encontrada", "INSTALLMENT_NOT_FOUND");
     }
 
-    const safe = toSafeInstallment(inst);
-    if (safe.daysOverdue > 0 && inst.loan.policy) {
-      const late = calculateLateCharges({
-        overdueAmount: safe.remainingBalance,
-        daysOverdue: safe.daysOverdue,
-        policy: inst.loan.policy,
-      });
-      safe.lateCharges = {
-        lateFee: late.lateFee,
-        lateInterest: late.lateInterest,
-        totalLateCharges: late.totalLateCharges,
-      };
-    }
-    return safe;
+    return enrichInstallment(inst);
   },
 
   async pay(id: string, actorId: string, ip?: string, userAgent?: string) {

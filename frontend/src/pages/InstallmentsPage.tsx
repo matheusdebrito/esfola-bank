@@ -25,18 +25,16 @@ function buildWhatsappUrl(installment: Installment) {
     "",
     `Passando para lembrar da parcela ${installment.number} do seu empréstimo.`,
     `Vencimento: ${dateBr(installment.dueDate)}`,
-    `Valor da parcela: ${brl(installment.totalDue)}`,
-    `Saldo em aberto: ${brl(installment.remainingBalance)}`,
+    `Valor original da parcela: ${brl(installment.totalDue)}`,
+    `Devido atualizado: ${brl(installment.updatedTotalDue)}`,
+    `Em aberto atualizado: ${brl(installment.updatedRemainingBalance)}`,
   ];
   if (installment.daysOverdue > 0) {
     lines.push(`Atraso: ${installment.daysOverdue} dia(s)`);
   }
   const lateCharges = installment.lateCharges?.totalLateCharges ?? 0;
   if (lateCharges > 0) {
-    lines.push(
-      `Multa e juros de atraso: ${brl(lateCharges)}`,
-      `Total atualizado: ${brl(installment.remainingBalance + lateCharges)}`,
-    );
+    lines.push(`Multa e juros de atraso: ${brl(lateCharges)}`);
   }
   lines.push("", "Qualquer dúvida, estamos à disposição.");
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
@@ -118,6 +116,7 @@ export default function InstallmentsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: [...QUERY_KEYS.installments.list, debouncedSearch, page, pageSize],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
       if (debouncedSearch) params.set("search", debouncedSearch);
@@ -154,9 +153,9 @@ export default function InstallmentsPage() {
               { key: "clientName", label: "Cliente", render: (v) => v ?? "-" },
               { key: "number", label: "Nº" },
               { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-              { key: "totalDue", label: "Devido", render: (v) => brl(Number(v)) },
+              { key: "totalDue", label: "Original", render: (v) => brl(Number(v)) },
+              { key: "updatedTotalDue", label: "Devido", render: (v) => brl(Number(v)) },
               { key: "paidAmount", label: "Pago", render: (v) => brl(Number(v)) },
-              { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
               { key: "lateCharges", label: "Encargos", render: (v) => brl(Number((v as any)?.totalLateCharges ?? 0)) },
               { key: "status", label: "Status", render: (_v, row) => installmentStatusLabel(row.effectiveStatus ?? row.status) },
               { key: "daysOverdue", label: "Atraso (dias)" },

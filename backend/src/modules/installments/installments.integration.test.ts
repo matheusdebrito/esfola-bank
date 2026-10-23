@@ -166,4 +166,67 @@ describe("installments (integração — requer banco de teste)", () => {
     expect(todayInstallment?.effectiveStatus).toBe("PENDING");
     expect(todayInstallment?.daysOverdue).toBe(0);
   });
+  it("exibe os encargos no total devido sem alterar a parcela original", async () => {
+    if (!loanId) return;
+    const result = await installmentsService.list({ loanId, page: 1, pageSize: 10 });
+    const overdue = result.items.find((item) => item.number === 1);
+    const todayInstallment = result.items.find((item) => item.number === 2);
+
+    expect(overdue?.totalDue).toBe(55);
+    expect(overdue?.lateCharges?.totalLateCharges).toBe(10.91);
+    expect(overdue?.updatedTotalDue).toBe(65.91);
+    expect(overdue?.updatedRemainingBalance).toBe(65.91);
+    expect(todayInstallment?.updatedTotalDue).toBe(55);
+    expect(todayInstallment?.updatedRemainingBalance).toBe(55);
+
+    const single = await installmentsService.get(overdue!.id);
+    expect(single.updatedTotalDue).toBe(overdue?.updatedTotalDue);
+    expect(single.updatedRemainingBalance).toBe(overdue?.updatedRemainingBalance);
+  });
+
+  it("considera pagamentos contratuais e encargos já pagos no total atualizado", async () => {
+    if (!loanId) return;
+    const inst = await prisma.installment.findFirst({ where: { loanId, number: 1 } });
+    if (!inst) throw new Error("Parcela de teste não encontrada");
+    await prisma.installment.update({
+      where: { id: inst.id },
+      data: { status: "PARTIALLY_PAID", paidAmount: 30, remainingBalance: 35 },
+    });
+    try {
+      const result = await installmentsService.get(inst.id);
+      expect(result.totalDue).toBe(55);
+      expect(result.lateCharges?.totalLateCharges).toBe(10.58);
+      expect(result.updatedTotalDue).toBe(75.58);
+      expect(result.updatedRemainingBalance).toBe(45.58);
+      expect(result.updatedTotalDue - result.paidAmount).toBeCloseTo(result.updatedRemainingBalance, 2);
+    } finally {
+      await prisma.installment.update({
+        where: { id: inst.id },
+        data: { status: "PENDING", paidAmount: 0, remainingBalance: 55 },
+      });
+    }
+  });
+
+  it("preserva encargos já recebidos após a quitação sem cobrar novos juros", async () => {
+    if (!loanId) return;
+    const inst = await prisma.installment.findFirst({ where: { loanId, number: 1 } });
+    if (!inst) throw new Error("Parcela de teste não encontrada");
+    await prisma.installment.update({
+      where: { id: inst.id },
+      data: { status: "PAID", paidAmount: 65.91, remainingBalance: 0 },
+    });
+    try {
+      const result = await installmentsService.get(inst.id);
+      expect(result.totalDue).toBe(55);
+      expect(result.updatedTotalDue).toBe(65.91);
+      expect(result.updatedRemainingBalance).toBe(0);
+      expect(result.lateCharges).toBeNull();
+    } finally {
+      await prisma.installment.update({
+        where: { id: inst.id },
+        data: { status: "PENDING", paidAmount: 0, remainingBalance: 55 },
+      });
+    }
+  });
+
 });

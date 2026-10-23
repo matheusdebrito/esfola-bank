@@ -80,8 +80,10 @@ export type Installment = {
   interestDue: number;
   chargesDue: number;
   totalDue: number;
+  updatedTotalDue: number;
   paidAmount: number;
   remainingBalance: number;
+  updatedRemainingBalance: number;
   status: string;
   effectiveStatus: string;
   isOverdue: boolean;
