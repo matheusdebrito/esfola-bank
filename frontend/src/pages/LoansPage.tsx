@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,8 +93,16 @@ export default function LoansPage() {
   });
 
   const [open, setOpen] = useState(false);
+  const [urlParams, setUrlParams] = useSearchParams();
   const [form, setForm] = useState(EMPTY_FORM);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (urlParams.get("new") === "1" && can("loans:create")) {
+      setOpen(true);
+      setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
+    }
+  }, [urlParams, setUrlParams, can]);
 
   useEffect(() => {
     if (form.policyId || !policies?.length) return;
