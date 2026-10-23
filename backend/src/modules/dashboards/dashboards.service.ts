@@ -397,6 +397,7 @@ async overview(query: DashboardQuery) {
     // --- Upcoming due (next 10) ---
     const upcomingDueRows = await prisma.$queryRaw<{
       clientId: string;
+      loanId: string;
       clientName: string;
       loanCode: string;
       installmentNumber: number;
@@ -422,6 +423,7 @@ async overview(query: DashboardQuery) {
       LIMIT 10`;
     const upcomingDue = upcomingDueRows.map((r) => ({
       clientId: r.clientId,
+      loanId: r.loanId,
       clientName: r.clientName,
       loanCode: r.loanCode,
       installmentNumber: r.installmentNumber,
@@ -567,6 +569,7 @@ async overview(query: DashboardQuery) {
       }[]>`
         SELECT
           l."clientId" AS "clientId",
+          l."id" AS "loanId",
           c."name" AS "clientName",
           l."code" AS "loanCode",
           i."number" AS "installmentNumber",
@@ -590,6 +593,7 @@ async overview(query: DashboardQuery) {
     const total = Number(countRows[0]?.total ?? 0);
     const items = rows.map((r) => ({
       clientId: r.clientId,
+      loanId: r.loanId,
       clientName: r.clientName,
       loanCode: r.loanCode,
       installmentNumber: r.installmentNumber,
