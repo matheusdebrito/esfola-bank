@@ -5,30 +5,8 @@ import { logger } from "./config/logger";
 import { invalidationService } from "./shared/cache/invalidation.service";
 import { disconnectPrisma } from "./config/prisma";
 import { disconnectRedis } from "./config/redis";
-import authRoutes from "./modules/auth/auth.routes";
-import usersRoutes from "./modules/users/users.routes";
-import clientsRoutes from "./modules/clients/clients.routes";
-import documentsRoutes from "./modules/documents/documents.routes";
-import dashboardsRoutes from "./modules/dashboards/dashboards.routes";
-import auditRoutes from "./modules/audit/audit.routes";
-import financialPolicyRoutes from "./modules/financial-policy/financial-policy.routes";
-import loansRoutes from "./modules/loans/loans.routes";
-import paymentsRoutes from "./modules/payments/payments.routes";
-import installmentsRoutes from "./modules/installments/installments.routes";
 
 const app = createApp();
-
-// Rotas da API (prefixo /api/v1)
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/users", usersRoutes);
-app.use("/api/v1/clients", clientsRoutes);
-app.use("/api/v1", documentsRoutes);
-app.use("/api/v1/financial-policies", financialPolicyRoutes);
-app.use("/api/v1/audit", auditRoutes);
-app.use("/api/v1/dashboards", dashboardsRoutes);
-app.use("/api/v1/loans", loansRoutes);
-app.use("/api/v1/payments", paymentsRoutes);
-app.use("/api/v1/installments", installmentsRoutes);
 
 applyErrorHandling(app);
 

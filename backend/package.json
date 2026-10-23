@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "API do Sistema de Gestão de Empréstimos",
   "scripts": {
@@ -10,6 +10,12 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:resolve": "prisma migrate resolve --applied",
+    "db:status": "prisma migrate status",
+    "db:reset": "prisma migrate reset",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src",

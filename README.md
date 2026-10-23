@@ -40,6 +40,16 @@ docker compose exec backend npx prisma generate
 docker compose exec backend npx prisma migrate deploy
 ```
 
+O histórico de migrations fica em `backend/prisma/migrations/` (baseline `0001_init`).
+
+> **Banco criado antes da pasta `migrations`:** marque o baseline como aplicado uma única vez,
+> sem recriar as tabelas:
+> ```bash
+> docker compose exec backend npx prisma migrate resolve --applied 0001_init
+> docker compose exec backend npx prisma migrate status
+> ```
+> Em bancos novos, o `migrate deploy` já cria toda a estrutura.
+
 ### 4. Backend (local)
 ```bash
 cd backend
