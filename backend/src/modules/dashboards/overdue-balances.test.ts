@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import {
   calculateOutstandingWithLateCharges,
+  computeInstallmentStatusCounts,
   summarizeOverdueInstallments,
   type LatePolicy,
 } from "./overdue-balances";
@@ -49,4 +50,12 @@ describe("valores vencidos nos dashboards", () => {
     ]);
     expect(summary).toEqual({ totalOverdue: 111.49, totalLateCharges: 21.49 });
   });
+  it("classifica parcelas vencidas sem duplicar parciais ou omitir pendentes", () => {
+    const counts = { PAID: 2, PENDING: 3, PARTIALLY_PAID: 2, CANCELED: 1 };
+    const overdue = [{ status: "PENDING" }, { status: "PARTIALLY_PAID" }];
+    const result = computeInstallmentStatusCounts(counts, overdue);
+    expect(result).toEqual({ paid: 2, pending: 2, partiallyPaid: 1, overdue: 2, canceled: 1 });
+    expect(Object.values(result).reduce((sum, value) => sum + value, 0)).toBe(8);
+  });
+
 });
