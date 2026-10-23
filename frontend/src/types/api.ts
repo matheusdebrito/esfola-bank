@@ -197,7 +197,8 @@ export type DashboardOverview = {
     loanCode: string;
     installmentNumber: number;
     dueDate: string;
-    remainingBalance: number;
+    updatedRemainingBalance: number;
+    lateCharges: number;
     daysOverdue: number;
   }[];
 };

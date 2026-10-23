@@ -17,6 +17,7 @@ export default function DefaultsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: [...QUERY_KEYS.installments.root, "overdue"],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const res = await api.get("/api/v1/installments?page=1&pageSize=100&overdueOnly=true");
       return res.data.data.items as Installment[];
@@ -32,8 +33,9 @@ export default function DefaultsPage() {
     { key: "clientName", label: "Cliente", render: (v: string | null) => v ?? "-" },
     { key: "number", label: "Parcela", render: (v: number) => `#${v}` },
     { key: "dueDate", label: "Vencimento", render: (v: string) => dateBr(v) },
-    { key: "totalDue", label: "Devido", render: (v: number) => brl(v) },
-    { key: "remainingBalance", label: "Saldo devedor", render: (v: number) => brl(v) },
+    { key: "totalDue", label: "Original", render: (v: number) => brl(v) },
+    { key: "updatedTotalDue", label: "Devido", render: (v: number) => brl(v) },
+    { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v: number) => brl(v) },
     { key: "daysOverdue", label: "Dias de atraso" },
     {
       key: "lateCharges",
