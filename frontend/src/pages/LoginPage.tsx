@@ -31,7 +31,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-background px-4 py-8">
       <img
-        src="/logo.webp"
+        src="/logo-nova.jpg"
         alt="Esfola Bank"
         className="h-40 w-auto max-h-[40vh] object-contain sm:h-52"
       />
