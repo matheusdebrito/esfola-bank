@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,7 @@ function formatDay(value: string) {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -241,7 +243,7 @@ export default function DashboardPage() {
       <h3 className="text-sm font-semibold text-muted-foreground">Operação e recebimentos</h3>
       <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <KpiCard title="Recebido no período" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} variant="success" />
-        <KpiCard title="Vencido hoje" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} sub="posição atual · com encargos" variant="danger" />
+        <KpiCard title="Vencido acumulado" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} sub="posição atual · com encargos" variant="danger" />
         <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} sub="posição atual · com encargos" />
         <KpiCard title="A receber no período" value={brl(d.receivableInPeriod ?? 0)} icon={CalendarClock} sub="saldo contratual com vencimento no período" />
         <KpiCard title="Capital concedido" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
@@ -289,6 +291,7 @@ export default function DashboardPage() {
                     { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
                     { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
                     { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                    { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Abrir</Button> },
                   ]}
                   data={upcomingDue}
                 />
@@ -328,6 +331,7 @@ export default function DashboardPage() {
                   { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
                   { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
                   { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
+                  { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Cobrar</Button> },
                 ]}
                 data={overdueList}
               />
@@ -391,9 +395,9 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="day" tickFormatter={flowLabel} tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={formatDay} />
+                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={flowLabel} />
                   <Area type="monotone" dataKey="received" name="Recebido" stroke="#059669" strokeWidth={2} fill="url(#receivedGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
