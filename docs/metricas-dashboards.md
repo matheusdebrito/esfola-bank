@@ -54,3 +54,21 @@ Dashboards aceitam consistência eventual (cache com TTL de 60s). Para leitura i
 - Valor vencido, tabela de parcelas em atraso, aging e clientes inadimplentes usam o cálculo de encargos da política financeira.
 - Carteira em aberto soma saldo contratual e encargos correntes vencidos, mantendo a taxa de inadimplência consistente.
 - Os campos persistidos de parcelas não são alterados. Os cálculos respeitam o calendário de Brasília e os dias de tolerância.
+
+## Revisão de consistência (outubro de 2026)
+
+- **Posição atual**: carteira em aberto, parcelas vencidas e percentual de carteira vencida são apurados sobre a carteira presente; esses indicadores não mudam quando o usuário filtra datas históricas de movimentação.
+- **Movimentação no período**: recebimentos e capital de empréstimos não cancelados/draft seguem o intervalo selecionado. `grantedAt` atualmente é registrado quando o contrato é criado; portanto não deve ser interpretado como comprovante de desembolso real.
+- **A receber no período**: soma saldos contratuais ainda abertos com vencimento no intervalo, não o total original da parcela e não encargos de mora.
+- **Gráficos de fluxo**: agrupam por dia para períodos de até 32 dias e por mês nos períodos mais longos; vencimento é tratado como data-calendário UTC e recebimento por data/hora de Brasília.
+- **Status de parcelas**: grupos mutuamente exclusivos; um pagamento parcial atrasado pertence à categoria vencida.
+- **Recebimentos discriminados**: `receivedPrincipal`, `receivedInterest` e `receivedCharges` provêm de `PaymentAllocation` vinculada a `Payment.status=REGISTERED` no período; não equivalem a lucro líquido.
+- **Juros da política em uso**: taxas, multa, arredondamento e tolerância não podem mais ser editados em política com contrato vinculado. Criar nova política preserva condições de empréstimos antigos.
+- **Cancelamento/renegociação**: operações com pagamentos registrados ou saldo aberto exigem regularização prévia, em vez de omitir silenciosamente dívida da carteira.
+
+### Limites ainda conhecidos
+
+- O sistema não registra uma data distinta para liberação efetiva do principal; `grantedAt` não substitui um lançamento de desembolso financeiro.
+- A métrica atual de carteira vencida é valor vencido sobre saldo total devido, **não** o indicador PAR30 de microfinanças.
+- Não é possível calcular lucro líquido ou eficiência histórica de cobrança sem dados e regras adicionais de custos, perdas e fotografia dos vencimentos por período.
+- Se houver contrato antigo já cancelado mantendo parcelas pendentes, sua correção requer conciliação dos registros existentes; a mudança preventiva não corrige retroativamente esses dados.
