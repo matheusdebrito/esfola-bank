@@ -111,15 +111,15 @@ function KpiCard({
         ? "text-emerald-600"
         : "text-primary";
   return (
-    <Card className="rounded-xl border border-border p-4">
-      <CardContent className="flex items-start gap-3 pt-2">
-        <div className={`rounded-lg bg-muted p-2 ${colorClass}`}>
-          <Icon className="h-5 w-5" />
+    <Card className="rounded-xl border border-border p-3 sm:p-4">
+      <CardContent className="flex items-start gap-2 pt-2 sm:gap-3">
+        <div className={`shrink-0 rounded-lg bg-muted p-1.5 sm:p-2 ${colorClass}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs text-muted-foreground">{title}</p>
-          <p className="mt-0.5 truncate text-lg font-bold">{value}</p>
-          {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
+          <p className="text-xs text-muted-foreground leading-tight">{title}</p>
+          <p className="mt-0.5 text-base font-bold leading-tight sm:text-lg break-words">{value}</p>
+          {sub ? <p className="text-xs text-muted-foreground leading-tight">{sub}</p> : null}
         </div>
       </CardContent>
     </Card>
@@ -235,7 +235,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <KpiCard title="Capital emprestado" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
         <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} />
         <KpiCard title="Recebido" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} sub="no período" variant="success" />
