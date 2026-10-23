@@ -55,6 +55,13 @@ function toIsoDayEnd(date: string) { return new Date(date + "T23:59:59.999-03:00
 export default function FinancePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: currentUser } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: async () => (await api.get("/api/v1/auth/me")).data.data.user as { role: string },
+    staleTime: 60_000,
+    retry: false,
+  });
+  const mayWrite = ["ADMIN", "MANAGER"].includes(currentUser?.role ?? "");
   const [opening, setOpening] = useState("");
   const [openingConfirmed, setOpeningConfirmed] = useState(false);
   const [kind, setKind] = useState<FinanceEntryType>("CONTRIBUTION");
@@ -74,7 +81,7 @@ export default function FinancePage() {
   });
   const { data: eligibleLoans } = useQuery({
     queryKey: ["finance", "eligible-loans"],
-    enabled: data?.initialized === true,
+    enabled: data?.initialized === true && mayWrite,
     queryFn: async () => (await api.get("/api/v1/finance/eligible-loans")).data.data as EligibleLoan[],
   });
   const { data: movements, isPending: loadingMovements } = useQuery({
@@ -134,6 +141,9 @@ export default function FinancePage() {
     <Button onClick={() => refetch()}><RefreshCw className="mr-2 h-4 w-4"/> Tentar novamente</Button>
   </Card>;
 
+  if (!data?.initialized && !mayWrite) {
+    return <Card className="p-6 text-sm text-muted-foreground">O livro-caixa ainda não foi aberto. Somente administradores e gerentes podem registrar o saldo inicial.</Card>;
+  }
   if (!data?.initialized) {
     return <div className="mx-auto max-w-2xl space-y-5">
       <div><h1 className="text-2xl font-semibold">Iniciar controle financeiro</h1>
@@ -195,7 +205,7 @@ export default function FinancePage() {
       </Card>)}
     </div>
 
-    <Card className="space-y-4 p-5">
+    {mayWrite && <Card className="space-y-4 p-5">
       <div><h2 className="text-lg font-semibold">Registrar movimentação</h2>
         <p className="text-xs text-muted-foreground">Pagamentos recebidos são registrados automaticamente pelo módulo Pagamentos. Não os lance novamente aqui.</p>
       </div>
@@ -228,7 +238,7 @@ export default function FinancePage() {
       <Button disabled={mutationEntry.isPending || !description.trim() || (kind === "DISBURSEMENT" ? !selectedLoan : !(moneyValue(amount) && moneyValue(amount)! > 0))} onClick={() => mutationEntry.mutate()}>
         <Plus className="mr-2 h-4 w-4"/>{mutationEntry.isPending ? "Registrando..." : "Registrar movimentação"}
       </Button>
-    </Card>
+    </Card>}
 
     <Card className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -256,7 +266,7 @@ export default function FinancePage() {
             <p className={"text-sm font-semibold tabular-nums " + (row.reversed ? "text-muted-foreground line-through" : cashPositive(row.type) ? "text-emerald-600" : "text-destructive")}>
               {cashPositive(row.type) ? "+" : "−"}{brl(row.amount)}
             </p>
-            {row.source === "MANUAL" && !row.reversed &&
+            {mayWrite && row.source === "MANUAL" && !row.reversed &&
               <Button size="sm" variant="ghost" className="mt-1 h-8 px-2 text-xs" disabled={mutationReverse.isPending} onClick={() => reverseEntry(row)}><Undo2 className="mr-1 h-3 w-3"/> Estornar</Button>}
           </div>
         </div>)}
