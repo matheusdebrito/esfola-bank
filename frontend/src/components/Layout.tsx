@@ -3,11 +3,10 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, UsersRound, HandCoins, Wallet, ListChecks, CreditCard,
   ChartNoAxesCombined, Landmark, ScrollText, ShieldCheck, Settings2,
-  Menu, X, Plus, ChevronRight, LogOut, CalendarDays,
+  Menu, X, Plus, LogOut, CalendarDays,
 } from "lucide-react";
 
 type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -109,7 +108,7 @@ export default function Layout() {
       className={({ isActive }) => cn(
         "group flex min-h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/80",
         isActive || isActivePath(location.pathname, item.href)
-          ? "bg-white/13 text-white ring-1 ring-white/10"
+          ? "bg-white/[.13] text-white ring-1 ring-white/10"
           : "text-slate-300 hover:bg-white/[.07] hover:text-white",
       )}>
       <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
