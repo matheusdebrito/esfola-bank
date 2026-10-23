@@ -3,6 +3,9 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { CreditCard, ChevronLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -35,6 +38,7 @@ import type { Installment, Loan, Payment } from "@/types/api";
 
 export default function LoanDetailPage() {
   const { loanId } = useParams();
+  const { can } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -98,12 +102,20 @@ export default function LoanDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="outline" size="sm" onClick={() => navigate("/loans")}>
-          ← Voltar aos empréstimos
-        </Button>
-        <h2 className="text-xl font-semibold">Empréstimo {loan.code}</h2>
-      </div>
+      <header className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="min-w-0">
+          <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground" onClick={() => navigate("/loans")}>
+            <ChevronLeft className="h-4 w-4" /> Voltar aos empréstimos
+          </Button>
+          <h1 className="break-words text-xl font-bold tracking-tight sm:text-2xl">{loan.code}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{loan.clientName ?? "Cliente"} · {loanStatusLabel(loan.status)}</p>
+        </div>
+        {loan.status === "ACTIVE" && can("payments:register") && <Link
+          to={`/payments?new=1&loanId=${encodeURIComponent(loan.id)}`}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90">
+          <CreditCard className="h-4 w-4" /> Registrar pagamento
+        </Link>}
+      </header>
 
       <Card>
         <CardHeader>
