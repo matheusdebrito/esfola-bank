@@ -21,6 +21,7 @@ import { brl, dateBr, dateTimeBr, toDateTimeInputValue } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { installmentStatusLabel, paymentMethodLabel, paymentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
+import { useAuth } from "@/hooks/useAuth";
 
 function emptyForm() {
   return {
@@ -35,6 +36,7 @@ function emptyForm() {
 export default function PaymentsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -70,7 +72,7 @@ export default function PaymentsPage() {
   const [open, setOpen] = useState(false);
   const [urlParams, setUrlParams] = useSearchParams();
   useEffect(() => {
-    if (urlParams.get("new") === "1") {
+    if (urlParams.get("new") === "1" && can("payments:register")) {
       const preferredLoanId = urlParams.get("loanId");
       if (preferredLoanId) {
         setForm(current => ({ ...current, loanId: preferredLoanId }));
@@ -83,7 +85,7 @@ export default function PaymentsPage() {
         return next;
       }, { replace: true });
     }
-  }, [urlParams, setUrlParams]);
+  }, [urlParams, setUrlParams, can]);
   const [form, setForm] = useState(emptyForm());
   const [selectedInstallments, setSelectedInstallments] = useState<Set<string>>(new Set());
 
@@ -233,7 +235,7 @@ export default function PaymentsPage() {
           <p className="mt-1 text-sm text-muted-foreground">Pagamentos confirmados e lançamentos em contratos.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setOpen(true)}>Lançar pagamento</Button>
+          {can("payments:register") && <Button onClick={() => setOpen(true)}>Lançar pagamento</Button>}
           <Button
             variant="outline"
             onClick={() =>
