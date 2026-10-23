@@ -177,6 +177,7 @@ export default function PaymentsPage() {
     onSuccess: () => {
       const loanId = form.loanId;
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
       if (loanId) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(loanId) });
