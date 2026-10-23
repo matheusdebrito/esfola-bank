@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { QUERY_KEYS } from "@/lib/query-keys";
 import { Client, ClientDocument } from "@/types/api";
 
 type DocType = "RG" | "PROOF_OF_ADDRESS";
@@ -80,7 +81,7 @@ export default function ClientsPage() {
   const [docInputKey, setDocInputKey] = useState(0);
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
-    queryKey: ["documents", editing?.id],
+    queryKey: QUERY_KEYS.documents.byClient(editing?.id ?? ""),
     queryFn: async () => {
       const res = await api.get(`/api/v1/clients/${editing!.id}/documents`);
       return res.data.data.documents as ClientDocument[];
@@ -89,10 +90,10 @@ export default function ClientsPage() {
   });
 
   const invalidateClients = () => {
-    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.root });
     queryClient.invalidateQueries({ queryKey: ["client"] });
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
   };
 
   const openClientLoans = (client: Client) => {

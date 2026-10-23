@@ -14,17 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
-  ACTIVE: "Ativo",
-  LIQUIDATED: "Liquidado",
-  CANCELED: "Cancelado",
-  RENEGOTIATED: "Renegociado",
-};
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr, percent, toDateInputValue } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { loanStatusLabel, periodicityLabel } from "@/lib/status-labels";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return toDateInputValue();
 }
 
 const EMPTY_FORM = {
@@ -44,7 +40,7 @@ export default function LoansPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["loans"],
+    queryKey: QUERY_KEYS.loans.list,
     queryFn: async () => {
       const res = await api.get("/api/v1/loans?page=1&pageSize=20");
       return res.data.data.items;
@@ -52,7 +48,7 @@ export default function LoansPage() {
   });
 
   const { data: clients } = useQuery({
-    queryKey: ["clients", "options"],
+    queryKey: QUERY_KEYS.clients.options,
     queryFn: async () => {
       const res = await api.get("/api/v1/clients?page=1&pageSize=100");
       return res.data.data.items;
@@ -60,7 +56,7 @@ export default function LoansPage() {
   });
 
   const { data: policies } = useQuery({
-    queryKey: ["policies", "options"],
+    queryKey: QUERY_KEYS.policies.options,
     queryFn: async () => {
       const res = await api.get("/api/v1/financial-policies?page=1&pageSize=100");
       return (res.data.data.items as any[]).filter((p) => p.active);
@@ -106,9 +102,9 @@ export default function LoansPage() {
       return { loan, activationError };
     },
     onSuccess: ({ activationError }) => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setOpen(false);
       setForm({ ...EMPTY_FORM, startDate: today() });
       if (activationError) {
@@ -119,10 +115,10 @@ export default function LoansPage() {
         toast({ title: "Empréstimo criado como rascunho" });
       }
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || "Não foi possível criar o empréstimo",
+        description: getApiErrorMessage(err, "Não foi possível criar o empréstimo"),
         variant: "destructive",
       }),
   });
@@ -150,13 +146,13 @@ export default function LoansPage() {
           <SimpleTable
             columns={[
               { key: "clientName", label: "Cliente" },
-              { key: "principalAmount", label: "Principal", render: (v) => `R$ ${Number(v).toFixed(2)}` },
-              { key: "interestRatePercent", label: "Juros flat (%)", render: (v) => Number(v).toFixed(2) },
-              { key: "periodicity", label: "Periodicidade", render: (v) => (v === "DAILY" ? "Diário" : "Mensal") },
+              { key: "principalAmount", label: "Principal", render: (v) => brl(Number(v)) },
+              { key: "interestRatePercent", label: "Juros flat (%)", render: (v) => percent(v) },
+              { key: "periodicity", label: "Periodicidade", render: (v) => periodicityLabel(v) },
               { key: "policyName", label: "Política" },
               { key: "installmentCount", label: "Parcelas" },
-              { key: "status", label: "Status", render: (v) => STATUS_LABELS[v] ?? v },
-              { key: "createdAt", label: "Criado em", render: (v) => (v ? new Date(v).toLocaleDateString("pt-BR") : "") },
+              { key: "status", label: "Status", render: (v) => loanStatusLabel(v) },
+              { key: "createdAt", label: "Criado em", render: (v) => dateBr(v) },
               {
                 key: "actions",
                 label: "",

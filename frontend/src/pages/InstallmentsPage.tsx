@@ -6,24 +6,11 @@ import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimpleTable } from "@/components/SimpleTable";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { installmentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
-
-const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const dateBr = (value: string) =>
-  new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-
-const statusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    PENDING: "Pendente",
-    PARTIALLY_PAID: "Parcialmente paga",
-    PAID: "Paga",
-    OVERDUE: "Atrasada",
-    CANCELED: "Cancelada",
-  };
-  return labels[status] ?? status;
-};
 
 function buildWhatsappUrl(installment: Installment) {
   const digits = (installment.clientPhone ?? "").replace(/\D/g, "");
@@ -62,20 +49,20 @@ export function InstallmentActions({ installment }: { installment: Installment }
   const payMutation = useMutation({
     mutationFn: () => api.post(`/api/v1/installments/${installment.id}/pay`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       const lateCharges = installment.lateCharges?.totalLateCharges ?? 0;
       toast({
         title: "Parcela baixada como paga",
         description: lateCharges > 0 ? `Encargos de atraso cobrados: ${brl(lateCharges)}` : undefined,
       });
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || "Não foi possível baixar a parcela",
+        description: getApiErrorMessage(err, "Não foi possível baixar a parcela"),
         variant: "destructive",
       }),
   });
@@ -130,7 +117,7 @@ export function InstallmentActions({ installment }: { installment: Installment }
 
 export default function InstallmentsPage() {
   const { data, isLoading } = useQuery({
-    queryKey: ["installments"],
+    queryKey: QUERY_KEYS.installments.list,
     queryFn: async () => {
       const res = await api.get("/api/v1/installments?page=1&pageSize=20");
       return res.data.data.items as Installment[];
@@ -153,7 +140,7 @@ export default function InstallmentsPage() {
               { key: "paidAmount", label: "Pago", render: (v) => brl(Number(v)) },
               { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
               { key: "lateCharges", label: "Encargos", render: (v) => brl(Number((v as any)?.totalLateCharges ?? 0)) },
-              { key: "status", label: "Status", render: (v) => statusLabel(v) },
+              { key: "status", label: "Status", render: (_v, row) => installmentStatusLabel(row.effectiveStatus ?? row.status) },
               { key: "daysOverdue", label: "Atraso (dias)" },
               { key: "actions", label: "", render: (_v, row) => <InstallmentActions installment={row} /> },
             ]}

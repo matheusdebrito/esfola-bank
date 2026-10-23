@@ -17,6 +17,7 @@ export const QUERY_KEYS = {
   },
   documents: {
     root: ["documents"] as const,
+    byClient: (clientId: string) => ["documents", clientId] as const,
   },
   loans: {
     root: ["loans"] as const,

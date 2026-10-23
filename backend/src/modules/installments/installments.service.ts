@@ -2,6 +2,12 @@ import { prisma } from "../../config/prisma";
 import { calculateLateCharges } from "../financial-policy/calculation.service";
 import { ConflictError, NotFoundError } from "../../shared/errors";
 import { paymentsService } from "../payments/payments.service";
+import {
+  calendarDateToUtc,
+  daysBetweenCalendarDates,
+  toCalendarDate,
+  todayCalendarDate,
+} from "../../shared/calendar";
 import type { InstallmentListQuery } from "./installments.schema";
 
 type SafeInstallment = {
@@ -19,6 +25,8 @@ type SafeInstallment = {
   paidAmount: number;
   remainingBalance: number;
   status: string;
+  effectiveStatus: string;
+  isOverdue: boolean;
   daysOverdue: number;
   lateCharges: {
     lateFee: number;
@@ -29,10 +37,20 @@ type SafeInstallment = {
 
 function computeDaysOverdue(dueDate: Date, status: string): number {
   if (status === "PAID" || status === "CANCELED") return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  return due < today ? Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  return Math.max(
+    0,
+    daysBetweenCalendarDates(toCalendarDate(dueDate), todayCalendarDate()),
+  );
+}
+
+/**
+ * Atraso é uma condição calculada (data de vencimento anterior a hoje), não um
+ * estado gravado. `effectiveStatus` expõe o rótulo correto sem alterar o
+ * `status` persistido da parcela.
+ */
+function resolveEffectiveStatus(status: string, daysOverdue: number): string {
+  const open = status === "PENDING" || status === "PARTIALLY_PAID";
+  return open && daysOverdue > 0 ? "OVERDUE" : status;
 }
 
 function toSafeInstallment(inst: any): SafeInstallment {
@@ -53,6 +71,8 @@ function toSafeInstallment(inst: any): SafeInstallment {
     paidAmount: Number(inst.paidAmount),
     remainingBalance: Number(inst.remainingBalance),
     status: inst.status,
+    effectiveStatus: resolveEffectiveStatus(inst.status, daysOverdue),
+    isOverdue: daysOverdue > 0,
     daysOverdue,
     lateCharges: null, // preenchido pelo service quando necessário
   };
@@ -66,7 +86,14 @@ export const installmentsService = {
 
     const where: any = {};
     if (query.loanId) where.loanId = query.loanId;
-    if (query.status) where.status = query.status;
+
+    const wantsOverdue = query.overdueOnly === true || query.status === "OVERDUE";
+    if (wantsOverdue) {
+      where.status = { in: ["PENDING", "PARTIALLY_PAID"] };
+      where.dueDate = { lt: calendarDateToUtc(todayCalendarDate()) };
+    } else if (query.status) {
+      where.status = query.status;
+    }
 
     const [installments, total] = await Promise.all([
       prisma.installment.findMany({

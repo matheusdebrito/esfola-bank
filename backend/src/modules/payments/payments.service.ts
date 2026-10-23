@@ -221,18 +221,36 @@ export const paymentsService = {
           client: { select: { id: true, name: true } },
           user: { select: { id: true, name: true } },
           loan: { select: { id: true } },
-          _count: { select: { allocations: true } },
+          allocations: {
+            select: {
+              id: true,
+              installmentId: true,
+              totalAmount: true,
+              installment: { select: { number: true } },
+            },
+            orderBy: { allocatedAt: "asc" },
+          },
         },
       }),
       prisma.payment.count({ where }),
     ]);
 
     return {
-      items: payments.map((p) => ({
-        ...toSafePayment(p),
-        clientName: p.client?.name ?? null,
-        allocationCount: p._count.allocations,
-      })),
+      items: payments.map((p) => {
+        const allocations = p.allocations.map((a) => ({
+          id: a.id,
+          installmentId: a.installmentId,
+          installmentNumber: a.installment.number,
+          allocatedAmount: Number(a.totalAmount),
+        }));
+
+        return {
+          ...toSafePayment(p),
+          clientName: p.client?.name ?? null,
+          allocationCount: allocations.length,
+          allocations,
+        };
+      }),
       meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     };
   },

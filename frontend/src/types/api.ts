@@ -81,6 +81,8 @@ export type Installment = {
   paidAmount: number;
   remainingBalance: number;
   status: string;
+  effectiveStatus: string;
+  isOverdue: boolean;
   daysOverdue: number;
   lateCharges: {
     lateFee: number;
@@ -103,6 +105,12 @@ export type Payment = {
   observations: string | null;
   idempotencyKey: string | null;
   status: string;
+  allocations?: {
+    id: string;
+    installmentId: string;
+    installmentNumber: number;
+    allocatedAmount: number;
+  }[];
   createdAt: string;
   updatedAt: string;
 };

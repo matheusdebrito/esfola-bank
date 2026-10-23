@@ -9,7 +9,7 @@ Prefixo: `/api/v1`. Respostas em JSON. Erros centralizados com `{ error, message
 | POST | /auth/login | Login (seta cookies HttpOnly) | { email, password } |
 | POST | /auth/logout | Logout (revoga refresh token) | - |
 | POST | /auth/refresh | Renova sessão (rotação de refresh) | - |
-| GET | /auth/me | Usuário autenticado | - |
+| GET | /auth/me | Usuário autenticado (inclui `permissions` efetivas do papel) | - |
 
 ## Usuários
 
@@ -61,12 +61,17 @@ Prefixo: `/api/v1`. Respostas em JSON. Erros centralizados com `{ error, message
 | GET | /installments/:id | Obter parcela | installments:read |
 | POST | /installments/:id/pay | Baixar parcela como paga (saldo + multa/juros de atraso) | payments:register |
 
+Filtros de `/installments`: `loanId`, `status`, `overdueOnly=true|false`, `page`, `pageSize`.
+O atraso é **calculado** (vencimento anterior à data de hoje): `overdueOnly=true` e
+`status=OVERDUE` retornam as parcelas `PENDING`/`PARTIALLY_PAID` vencidas. Cada item inclui
+`status` (persistido), `effectiveStatus` (ex.: `OVERDUE`), `isOverdue` e `daysOverdue`.
+
 ## Pagamentos
 
 | Método | Endpoint | Descrição | Permissão |
 |--------|----------|-----------|-----------|
 | POST | /payments | Registrar pagamento (transacional, idempotente) | payments:register |
-| GET | /payments | Listar pagamentos (paginado) | payments:read |
+| GET | /payments | Listar pagamentos (paginado, com alocações por parcela) | payments:read |
 | GET | /payments/:id | Obter pagamento (com alocações) | payments:read |
 | POST | /payments/:id/reverse | Estornar pagamento | payments:reverse |
 
@@ -90,6 +95,11 @@ Prefixo: `/api/v1`. Respostas em JSON. Erros centralizados com `{ error, message
 | GET | /dashboards/defaults | Inadimplência | dashboards:read |
 | GET | /dashboards/operational | Atividade operacional | dashboards:read |
 | GET | /dashboards/fiscalization | Eventos de fiscalização | dashboards:read |
+| GET | /dashboards/monthly | Indicadores do mês corrente (fuso de Brasília) | dashboards:read |
+
+`delinquencyRate` = valor vencido ÷ carteira em aberto (parcelas `PENDING`/`PARTIALLY_PAID`),
+em percentual. O atraso usa a data-calendário de Brasília, então parcelas que vencem hoje
+ainda não contam como atrasadas.
 
 ## Auditoria
 

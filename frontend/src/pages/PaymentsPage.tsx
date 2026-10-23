@@ -14,24 +14,21 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
 import { exportToCsv } from "@/lib/csv";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr, dateTimeBr, toDateTimeInputValue } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { installmentStatusLabel, paymentMethodLabel, paymentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
 
-const METHOD_LABELS: Record<string, string> = {
-  CASH: "Dinheiro",
-  PIX: "PIX",
-  TRANSFER: "Transferência",
-  CHECK: "Cheque",
-  OTHER: "Outro",
-};
-
-function nowLocalInput() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function emptyForm() {
-  return { loanId: "", receivedAmount: "", receivedAt: nowLocalInput(), method: "PIX", reference: "", observations: "" };
+  return {
+    loanId: "",
+    receivedAmount: "",
+    receivedAt: toDateTimeInputValue(),
+    method: "PIX",
+    reference: "",
+    observations: "",
+  };
 }
 
 export default function PaymentsPage() {
@@ -39,7 +36,7 @@ export default function PaymentsPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["payments"],
+    queryKey: QUERY_KEYS.payments.list,
     queryFn: async () => {
       const res = await api.get("/api/v1/payments?page=1&pageSize=50");
       return res.data.data.items;
@@ -47,7 +44,7 @@ export default function PaymentsPage() {
   });
 
   const { data: activeLoans } = useQuery({
-    queryKey: ["loans", "active"],
+    queryKey: QUERY_KEYS.loans.active,
     queryFn: async () => {
       const res = await api.get("/api/v1/loans?page=1&pageSize=100&status=ACTIVE");
       return res.data.data.items as any[];
@@ -59,8 +56,7 @@ export default function PaymentsPage() {
   const [allocations, setAllocations] = useState<Record<string, number>>({});
 
   const { data: installments, isLoading: loadingInstallments } = useQuery({
-    queryKey: ["installments", "loan", form.loanId],
-    enabled: !!form.loanId,
+    queryKey: QUERY_KEYS.installments.byLoan(form.loanId),    enabled: !!form.loanId,
     queryFn: async () => {
       const res = await api.get(`/api/v1/installments?loanId=${form.loanId}&page=1&pageSize=100`);
       return res.data.data.items as Installment[];
@@ -158,29 +154,35 @@ export default function PaymentsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setOpen(false);
       setForm(emptyForm());
       toast({ title: "Pagamento lançado" });
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || err.message || "Não foi possível lançar o pagamento",
+        description: getApiErrorMessage(err, "Não foi possível lançar o pagamento"),
         variant: "destructive",
       }),
   });
 
   const columns = [
     { key: "clientName", label: "Cliente" },
-    { key: "receivedAmount", label: "Valor recebido", render: (v: any) => `R$ ${Number(v).toFixed(2)}` },
-    { key: "method", label: "Método", render: (v: any) => METHOD_LABELS[v] ?? v },
-    { key: "receivedAt", label: "Recebido em", render: (v: any) => (v ? new Date(v).toLocaleString("pt-BR") : "") },
+    {
+      key: "allocations",
+      label: "Parcelas",
+      render: (v: any) =>
+        Array.isArray(v) && v.length > 0 ? v.map((a) => `#${a.installmentNumber}`).join(", ") : "—",
+    },
+    { key: "receivedAmount", label: "Valor recebido", render: (v: any) => brl(Number(v)) },
+    { key: "method", label: "Método", render: (v: any) => paymentMethodLabel(v) },
+    { key: "receivedAt", label: "Recebido em", render: (v: any) => dateTimeBr(v) },
     { key: "userName", label: "Usuário" },
-    { key: "status", label: "Status", render: (v: any) => (v === "REVERSED" ? "Estornado" : "Registrado") },
+    { key: "status", label: "Status", render: (v: any) => paymentStatusLabel(v) },
   ];
 
   return (
@@ -274,10 +276,8 @@ export default function PaymentsPage() {
                                 />
                               </td>
                               <td className="p-2">
-                                Parcela {i.number} — venc.{" "}
-                                {new Date(i.dueDate).toLocaleDateString("pt-BR")} (
-                                {i.status === "OVERDUE" ? "atrasada" : i.status === "PARTIALLY_PAID" ? "parcial" : "pendente"}
-                                )
+                                Parcela {i.number} — venc. {dateBr(i.dueDate)} (
+                                {installmentStatusLabel(i.effectiveStatus ?? i.status)})
                               </td>
                               <td className="p-2 text-right">{Number(i.remainingBalance).toFixed(2)}</td>
                               <td className="p-2 text-right">
