@@ -38,7 +38,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci
+      # O backend declara uma dependencia de desenvolvimento especifica do Windows.
+      # Espelha a instalacao ja utilizada pelo Dockerfile do projeto.
+      - run: npm ci --omit=optional --force
       - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npm run typecheck
