@@ -9,7 +9,7 @@ export const cashBookSetupSchema = z.object({
 
 export const financeEntryCreateSchema = z.object({
   type: z.enum(["CONTRIBUTION", "WITHDRAWAL", "EXPENSE", "DISBURSEMENT"]),
-  amount: money.positive(),
+  amount: money.refine((value) => value > 0, "Valor precisa ser maior que zero"),
   description: z.string().trim().min(3).max(500),
   loanId: z.string().uuid().optional(),
   idempotencyKey: z.string().trim().min(8).max(128).optional(),
