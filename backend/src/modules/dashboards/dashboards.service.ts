@@ -31,6 +31,14 @@ function periodFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql
 
 const OPEN_CONDITION = Prisma.sql`"status" IN ('PENDING', 'PARTIALLY_PAID')`;
 
+function dueDatePeriod(query: DashboardQuery, fallbackFrom: Date, fallbackTo: Date) {
+  const localDate = (value: Date) => value.toLocaleDateString("en-CA", { timeZone: APP_TIME_ZONE });
+  const from = calendarDateToUtc(localDate(query.from ? new Date(query.from) : fallbackFrom));
+  const to = new Date(calendarDateToUtc(localDate(query.to ? new Date(query.to) : fallbackTo)).getTime() + 86_400_000);
+  return { from, to };
+}
+
+
 export const dashboardsService = {
   async executive(query: DashboardQuery) {
     const cacheKey = cacheService.buildKey("dashboards", "executive", JSON.stringify(query));
@@ -245,18 +253,10 @@ async overview(query: DashboardQuery) {
     const periodFrom = from ?? defaultFrom;
     const periodTo = to ?? defaultTo;
 
-    const todayStart = calendarDateToUtc(todayStr);
-    const next7Days = calendarDateToUtc(
-      new Date(Date.parse(`${todayStr}T00:00:00.000Z`) + 7 * 86_400_000).toISOString().slice(0, 10),
-    );
-    const monthStart = calendarDateToUtc(`${todayStr.slice(0, 7)}-01`);
-    const nextMonth = todayStr.slice(5, 7) === "12"
-      ? `${Number(todayStr.slice(0, 4)) + 1}-01-01`
-      : `${todayStr.slice(0, 4)}-${String(Number(todayStr.slice(5, 7)) + 1).padStart(2, "0")}-01`;
-    const monthEnd = calendarDateToUtc(nextMonth);
 
-    const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const duePeriod = dueDatePeriod(query, periodFrom, periodTo);
+    const dailyGrouping = periodTo.getTime() - periodFrom.getTime() <= 32 * 86_400_000;
+    const flowPattern = dailyGrouping ? "YYYY-MM-DD" : "YYYY-MM";
 
     // --- KPIs ---
     const [
@@ -297,10 +297,10 @@ async overview(query: DashboardQuery) {
         SELECT COUNT(*) AS c FROM "Installment"
         WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
           AND ("dueDate" AT TIME ZONE 'UTC')::date >= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
-          AND ("dueDate" AT TIME ZONE 'UTC')::date <= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
+          AND ("dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
       prisma.$queryRaw<{ sum: string }[]>`
-        SELECT COALESCE(SUM("totalDue"), 0) AS sum FROM "Installment"
-        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}`,
+        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment"
+        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${duePeriod.from} AND "dueDate" < ${duePeriod.to}`,
 
       prisma.$queryRaw<{ status: string; c: bigint }[]>`
         SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
@@ -317,10 +317,14 @@ async overview(query: DashboardQuery) {
       statusMap[row.status] = Number(row.c);
     }
     const overdueCount = overdueInstallments.length;
+    const overduePartialCount = await prisma.installment.count({
+      where: { status: "PARTIALLY_PAID", dueDate: { lt: calendarDateToUtc(todayStr) } },
+    });
+    const overduePendingCount = overdueCount - overduePartialCount;
     const installmentStatus = {
       paid: statusMap.PAID ?? 0,
-      pending: Math.max(0, (statusMap.PENDING ?? 0) - overdueCount),
-      partiallyPaid: statusMap.PARTIALLY_PAID ?? 0,
+      pending: Math.max(0, (statusMap.PENDING ?? 0) - overduePendingCount),
+      partiallyPaid: Math.max(0, (statusMap.PARTIALLY_PAID ?? 0) - overduePartialCount),
       overdue: overdueCount,
       canceled: statusMap.CANCELED ?? 0,
     };
@@ -424,7 +428,7 @@ async overview(query: DashboardQuery) {
 
     // --- Receipts series (daily for period) ---
     const receiptsRows = await prisma.$queryRaw<{ day: Date | string; received: string }[]>`
-      SELECT (DATE_TRUNC('day', "receivedAt" AT TIME ZONE ${APP_TIME_ZONE}))::date AS day,
+      SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS day,
              COALESCE(SUM("receivedAmount"), 0) AS received
       FROM "Payment"
       WHERE "status" = 'REGISTERED'
@@ -439,25 +443,25 @@ async overview(query: DashboardQuery) {
     // --- Financial flow (monthly for period) ---
     const [grantedRows, receivedMonthlyRows, predictedRows] = await Promise.all([
       prisma.$queryRaw<{ month: string; granted: string }[]>`
-        SELECT TO_CHAR("grantedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+        SELECT TO_CHAR("grantedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS month,
                COALESCE(SUM("principalAmount"), 0) AS granted
         FROM "Loan"
         WHERE "status" NOT IN ('DRAFT', 'CANCELED')
           AND "grantedAt" >= ${periodFrom} AND "grantedAt" <= ${periodTo}
         GROUP BY 1 ORDER BY 1`,
       prisma.$queryRaw<{ month: string; received: string }[]>`
-        SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+        SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS month,
                COALESCE(SUM("receivedAmount"), 0) AS received
         FROM "Payment"
         WHERE "status" = 'REGISTERED'
           AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}
         GROUP BY 1 ORDER BY 1`,
       prisma.$queryRaw<{ month: string; predicted: string }[]>`
-        SELECT TO_CHAR("dueDate" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
-               COALESCE(SUM("totalDue"), 0) AS predicted
+        SELECT TO_CHAR("dueDate" AT TIME ZONE 'UTC', ${flowPattern}) AS month,
+               COALESCE(SUM("remainingBalance"), 0) AS predicted
         FROM "Installment"
         WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
-          AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}
+          AND "dueDate" >= ${duePeriod.from} AND "dueDate" < ${duePeriod.to}
         GROUP BY 1 ORDER BY 1`,
     ]);
 
