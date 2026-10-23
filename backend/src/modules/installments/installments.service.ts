@@ -1,0 +1,235 @@
+import { prisma } from "../../config/prisma";
+import { calculateLateCharges } from "../financial-policy/calculation.service";
+import { ConflictError, NotFoundError } from "../../shared/errors";
+import { paymentsService } from "../payments/payments.service";
+import type { InstallmentListQuery } from "./installments.schema";
+
+type SafeInstallment = {
+  id: string;
+  loanId: string;
+  clientId: string;
+  clientName: string | null;
+  clientPhone: string | null;
+  number: number;
+  dueDate: Date;
+  principalDue: number;
+  interestDue: number;
+  chargesDue: number;
+  totalDue: number;
+  paidAmount: number;
+  remainingBalance: number;
+  status: string;
+  daysOverdue: number;
+  lateCharges: {
+    lateFee: number;
+    lateInterest: number;
+    totalLateCharges: number;
+  } | null;
+};
+
+function computeDaysOverdue(dueDate: Date, status: string): number {
+  if (status === "PAID" || status === "CANCELED") return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  return due < today ? Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+}
+
+function toSafeInstallment(inst: any): SafeInstallment {
+  const daysOverdue = computeDaysOverdue(inst.dueDate, inst.status);
+
+  return {
+    id: inst.id,
+    loanId: inst.loanId,
+    clientId: inst.loan.clientId,
+    clientName: inst.loan.client?.name ?? null,
+    clientPhone: inst.loan.client?.phone ?? null,
+    number: inst.number,
+    dueDate: inst.dueDate,
+    principalDue: Number(inst.principalDue),
+    interestDue: Number(inst.interestDue),
+    chargesDue: Number(inst.chargesDue),
+    totalDue: Number(inst.totalDue),
+    paidAmount: Number(inst.paidAmount),
+    remainingBalance: Number(inst.remainingBalance),
+    status: inst.status,
+    daysOverdue,
+    lateCharges: null, // preenchido pelo service quando necessário
+  };
+}
+
+export const installmentsService = {
+  async list(query: InstallmentListQuery) {
+    const page = Math.max(1, query.page);
+    const pageSize = Math.min(100, Math.max(1, query.pageSize));
+    const skip = (page - 1) * pageSize;
+
+    const where: any = {};
+    if (query.loanId) where.loanId = query.loanId;
+    if (query.status) where.status = query.status;
+
+    const [installments, total] = await Promise.all([
+      prisma.installment.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: [{ loanId: "asc" }, { number: "asc" }],
+        include: {
+          loan: {
+            select: {
+              id: true,
+              clientId: true,
+              status: true,
+              client: { select: { name: true, phone: true } },
+              policy: {
+                select: {
+                  lateFeeAmount: true,
+                  dailyLateInterestPercent: true,
+                  toleranceDays: true,
+                  roundingMode: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.installment.count({ where }),
+    ]);
+
+    // calcular atraso e encargos de mora para parcelas vencidas
+    const enriched = await Promise.all(
+      installments.map(async (inst) => {
+        const safe = toSafeInstallment(inst);
+        if (safe.daysOverdue > 0 && inst.loan.policy) {
+          const policy = inst.loan.policy as any;
+          const late = calculateLateCharges({
+            overdueAmount: safe.remainingBalance,
+            daysOverdue: safe.daysOverdue,
+            policy: {
+              lateFeeAmount: policy.lateFeeAmount,
+              dailyLateInterestPercent: policy.dailyLateInterestPercent,
+              toleranceDays: policy.toleranceDays,
+              roundingMode: policy.roundingMode,
+            },
+          });
+          safe.lateCharges = {
+            lateFee: late.lateFee,
+            lateInterest: late.lateInterest,
+            totalLateCharges: late.totalLateCharges,
+          };
+        }
+        return safe;
+      }),
+    );
+
+    return {
+      items: enriched,
+      meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+    };
+  },
+
+  async get(id: string) {
+    const inst = await prisma.installment.findUnique({
+      where: { id },
+      include: {
+        loan: {
+          select: {
+            id: true,
+            clientId: true,
+            status: true,
+            client: { select: { name: true, phone: true } },
+            policy: true,
+          },
+        },
+      },
+    });
+    if (!inst) {
+      throw new NotFoundError("Parcela não encontrada", "INSTALLMENT_NOT_FOUND");
+    }
+
+    const safe = toSafeInstallment(inst);
+    if (safe.daysOverdue > 0 && inst.loan.policy) {
+      const late = calculateLateCharges({
+        overdueAmount: safe.remainingBalance,
+        daysOverdue: safe.daysOverdue,
+        policy: inst.loan.policy,
+      });
+      safe.lateCharges = {
+        lateFee: late.lateFee,
+        lateInterest: late.lateInterest,
+        totalLateCharges: late.totalLateCharges,
+      };
+    }
+    return safe;
+  },
+
+  async pay(id: string, actorId: string, ip?: string, userAgent?: string) {
+    const inst = await prisma.installment.findUnique({
+      where: { id },
+      include: {
+        loan: {
+          select: {
+            id: true,
+            clientId: true,
+            status: true,
+            policy: true,
+          },
+        },
+      },
+    });
+    if (!inst) {
+      throw new NotFoundError("Parcela não encontrada", "INSTALLMENT_NOT_FOUND");
+    }
+    if (inst.status === "PAID") {
+      throw new ConflictError("Parcela já está paga", "INSTALLMENT_ALREADY_PAID");
+    }
+    if (inst.status === "CANCELED") {
+      throw new ConflictError("Parcela cancelada não pode ser paga", "INSTALLMENT_CANCELED");
+    }
+    if (inst.loan.status !== "ACTIVE") {
+      throw new ConflictError("Não é possível baixar parcela de empréstimo não ativo", "LOAN_NOT_ACTIVE");
+    }
+
+    const remainingCents = Math.round(Number(inst.remainingBalance) * 100);
+    if (remainingCents <= 0) {
+      throw new ConflictError("Parcela sem saldo em aberto", "INSTALLMENT_NO_BALANCE");
+    }
+
+    const daysOverdue = computeDaysOverdue(inst.dueDate, inst.status);
+    const late = inst.loan.policy
+      ? calculateLateCharges({
+          overdueAmount: remainingCents / 100,
+          daysOverdue,
+          policy: inst.loan.policy,
+        })
+      : { lateFee: 0, lateInterest: 0, totalLateCharges: 0 };
+
+    const interestCents = Math.min(remainingCents, Math.round(Number(inst.interestDue) * 100));
+    const principalCents = remainingCents - interestCents;
+    const chargesCents = Math.round(late.totalLateCharges * 100);
+    const receivedCents = remainingCents + chargesCents;
+
+    return paymentsService.register(
+      {
+        clientId: inst.loan.clientId,
+        loanId: inst.loanId,
+        receivedAmount: receivedCents / 100,
+        receivedAt: new Date().toISOString(),
+        method: "CASH",
+        reference: `Baixa da parcela ${inst.number}`,
+        observations: "Baixa manual pela lista de parcelas",
+        allocations: [
+          {
+            installmentId: id,
+            principalAmount: principalCents / 100,
+            interestAmount: interestCents / 100,
+            chargesAmount: chargesCents / 100,
+          },
+        ],
+      },
+      actorId,
+      ip,
+      userAgent,
+    );
+  },
+};

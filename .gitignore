@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Storage
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Prisma
+prisma/migrations/*.lock
+
+# Storage uploads (persistent volume - not committed)
+storage/clients/
+
+# Coverage
+coverage/

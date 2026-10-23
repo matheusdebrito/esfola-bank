@@ -1,0 +1,347 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+  AUDITOR
+}
+
+enum RoundingMode {
+  HALF_UP
+  HALF_EVEN
+  DOWN
+  UP
+}
+
+enum ClientDocumentType {
+  RG
+  PROOF_OF_ADDRESS
+}
+
+enum ClientDocumentState {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LoanBillingModel {
+  FIXED_INSTALLMENTS
+  SINGLE_PAYMENT
+  VARIABLE
+}
+
+enum LoanPeriodicity {
+  MONTHLY
+  DAILY
+}
+
+enum LoanStatus {
+  DRAFT
+  ACTIVE
+  LIQUIDATED
+  CANCELED
+  RENEGOTIATED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELED
+}
+
+enum PaymentMethod {
+  CASH
+  PIX
+  TRANSFER
+  CHECK
+  OTHER
+}
+
+enum PaymentStatus {
+  REGISTERED
+  REVERSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  DOCUMENT_UPLOAD
+  DOCUMENT_REPLACE
+  DOCUMENT_REMOVE
+  LOAN_CREATE
+  LOAN_UPDATE
+  LOAN_STATUS_CHANGE
+  PAYMENT_REGISTER
+  PAYMENT_REVERSE
+  USER_CREATE
+  USER_UPDATE
+  USER_STATUS_CHANGE
+  PERMISSION_CHANGE
+  REPORT_EXPORT
+  DOCUMENT_ACCESS
+}
+
+enum CacheDomain {
+  CLIENTS
+  LOANS
+  INSTALLMENTS
+  PAYMENTS
+  DASHBOARDS
+  REPORTS
+  PERMISSIONS
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique @db.VarChar(255)
+  name          String   @db.VarChar(255)
+  passwordHash  String   @db.VarChar(255)
+  role          UserRole @default(OPERATOR)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  payments      Payment[]
+  uploadedDocs  ClientDocument[] @relation("UploadedDocuments")
+  loans         Loan[]
+
+  @@index([email])
+  @@index([role])
+  @@index([active])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model Client {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  cpf         String   @unique @db.VarChar(14)
+  phone       String?  @db.VarChar(20)
+  birthDate   DateTime @db.Timestamptz
+  cep         String   @db.VarChar(10)
+  address     String   @db.VarChar(255)
+  number      String   @db.VarChar(20)
+  complement  String?  @db.VarChar(100)
+  neighborhood String  @db.VarChar(100)
+  city        String   @db.VarChar(100)
+  state       String   @db.VarChar(2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents   ClientDocument[]
+  loans       Loan[]
+  payments    Payment[]
+
+  @@index([cpf])
+  @@index([active])
+  @@index([name])
+}
+
+model ClientDocument {
+  id          String              @id @default(uuid()) @db.Uuid
+  clientId    String              @db.Uuid
+  type        ClientDocumentType
+  storageKey  String              @db.VarChar(500)
+  originalName String             @db.VarChar(255)
+  mimeType    String              @db.VarChar(100)
+  sizeBytes   Int
+  state       ClientDocumentState @default(PENDING)
+  uploadedBy  String?             @db.Uuid
+  uploadedAt  DateTime            @default(now())
+
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+    uploader    User?   @relation("UploadedDocuments", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([type])
+  @@index([uploadedAt])
+}
+
+model Loan {
+  id               String            @id @default(uuid()) @db.Uuid
+  clientId         String            @db.Uuid
+  userId           String            @db.Uuid
+  policyId         String?           @db.Uuid
+  grantedAt          DateTime?       @db.Timestamptz
+  principalAmount    Decimal         @db.Decimal(14, 2)
+  interestRatePercent Decimal        @db.Decimal(6, 2) // % flat sobre o principal (snapshot da política)
+  periodicity        LoanPeriodicity @default(MONTHLY) // mensal ou diário, definido na criação
+  billingModel       LoanBillingModel
+  installmentCount   Int?
+  startDate          DateTime?       @db.Timestamptz
+  dueDate            DateTime?       @db.Timestamptz
+  contractTerms      String?         @db.Text
+  status             LoanStatus      @default(DRAFT)
+  observations       String?         @db.Text
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  client           Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user             User    @relation(fields: [userId], references: [id])
+  policy           FinancialPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  installments     Installment[]
+  payments         Payment[]
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([status])
+  @@index([grantedAt])
+}
+
+model Installment {
+  id              String          @id @default(uuid()) @db.Uuid
+  loanId          String          @db.Uuid
+  number          Int
+  dueDate         DateTime        @db.Timestamptz
+  principalDue    Decimal         @db.Decimal(14, 2)
+  interestDue     Decimal         @db.Decimal(14, 2)
+  chargesDue      Decimal         @db.Decimal(14, 2) @default(0)
+  totalDue        Decimal         @db.Decimal(14, 2)
+  paidAmount      Decimal         @db.Decimal(14, 2) @default(0)
+  remainingBalance Decimal        @db.Decimal(14, 2)
+  status          InstallmentStatus @default(PENDING)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  loan            Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  allocations     PaymentAllocation[]
+
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([loanId, number])
+}
+
+model Payment {
+  id             String         @id @default(uuid()) @db.Uuid
+  clientId       String         @db.Uuid
+  loanId         String         @db.Uuid
+  userId         String         @db.Uuid
+  receivedAmount Decimal          @db.Decimal(14, 2)
+  receivedAt     DateTime       @db.Timestamptz
+  registeredAt   DateTime       @default(now())
+  method         PaymentMethod
+  reference      String?        @db.VarChar(255)
+  observations   String?        @db.Text
+  idempotencyKey String?        @unique @db.VarChar(255)
+  status         PaymentStatus  @default(REGISTERED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  client         Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  loan           Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  user           User   @relation(fields: [userId], references: [id])
+  allocations    PaymentAllocation[]
+
+  @@index([clientId])
+  @@index([loanId])
+  @@index([userId])
+  @@index([receivedAt])
+  @@index([status])
+  @@index([idempotencyKey])
+}
+
+model PaymentAllocation {
+  id             String   @id @default(uuid()) @db.Uuid
+  paymentId      String   @db.Uuid
+  installmentId  String   @db.Uuid
+  principalAmount Decimal  @db.Decimal(14, 2)
+  interestAmount  Decimal  @db.Decimal(14, 2)
+  chargesAmount   Decimal  @db.Decimal(14, 2)
+  totalAmount     Decimal  @db.Decimal(14, 2)
+  allocatedAt     DateTime @default(now())
+
+  payment       Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  installment Installment @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([installmentId])
+  @@unique([paymentId, installmentId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  action     AuditAction
+  entityType String   @db.VarChar(100)
+  entityId   String?  @db.VarChar(255)
+  oldValues  Json?
+  newValues  Json?
+  metadata   Json?
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model CacheInvalidationEvent {
+  id        String      @id @default(uuid()) @db.Uuid
+  domain    CacheDomain
+  key       String      @db.VarChar(500)
+  payload   Json?
+  processed Boolean     @default(false)
+  attempts  Int         @default(0)
+  lastError String?     @db.Text
+  createdAt DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([domain, processed])
+  @@index([processed, createdAt])
+  @@index([key])
+}
+
+model FinancialPolicy {
+  id                String          @id @default(uuid()) @db.Uuid
+  name              String          @db.VarChar(255)
+  description       String?         @db.Text
+  interestRatePercent Decimal      @db.Decimal(6, 2) @default(0) // juros flat % sobre o valor do empréstimo
+  lateFeeAmount      Decimal        @db.Decimal(14, 2) @default(10) // multa fixa por parcela atrasada (R$)
+  dailyLateInterestPercent Decimal @db.Decimal(6, 4) @default(0) // juros de mora diário % sobre o vencido
+  roundingMode       RoundingMode   @default(HALF_UP)
+  toleranceDays      Int            @default(0) // dias de tolerância antes de considerar atraso
+  active             Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  createdBy          String?        @db.Uuid
+
+  loans             Loan[]
+
+  @@index([active])
+}
