@@ -16,7 +16,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { installmentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
 
-function buildWhatsappUrl(installment: Installment) {
+export function buildWhatsappUrl(installment: Installment) {
   const digits = (installment.clientPhone ?? "").replace(/\D/g, "");
   if (digits.length < 10) return null;
   const phone = digits.startsWith("55") && digits.length >= 12 ? digits : `55${digits}`;
