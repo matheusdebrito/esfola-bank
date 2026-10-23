@@ -1,51 +1,16 @@
-"use client";
-
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { SimpleTable } from "@/components/SimpleTable";
-import { Pagination } from "@/components/Pagination";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
-import {
-  DollarSign,
-  Wallet,
-  TrendingUp,
-  Percent,
-  Users,
-  Briefcase,
-  CalendarClock,
-  AlertTriangle,
-  Clock,
-  Target,
-  RefreshCw,
-} from "lucide-react";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
+import { ArrowRight, CalendarClock, CheckCircle2, AlertTriangle, Wallet, TrendingUp, RefreshCw, ChevronRight } from "lucide-react";
 import { brl, percent, dateBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import type { DashboardOverview } from "@/types/api";
-
-const COLORS = ["#2563eb", "#059669", "#d97706", "#be123c", "#7c3aed", "#0891b2"];
 
 const PERIOD_OPTIONS = [
   { value: "today", label: "Hoje" },
@@ -92,435 +57,219 @@ function periodToRange(period: string, customFrom: string, customTo: string): { 
   }
 }
 
-function KpiCard({
-  title,
-  value,
-  icon: Icon,
-  sub,
-  variant = "default",
-}: {
-  title: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  sub?: string;
-  variant?: "default" | "danger" | "success";
+
+
+type DashboardIcon = React.ComponentType<{ className?: string }>;
+function Metric({ title, value, description, Icon, variant = "default" }: {
+  title: string; value: string; description: string; Icon: DashboardIcon;
+  variant?: "default" | "positive" | "warning";
 }) {
-  const colorClass =
-    variant === "danger"
-      ? "text-destructive"
-      : variant === "success"
-        ? "text-emerald-600"
-        : "text-primary";
+  const accent = variant === "warning" ? "text-destructive" : variant === "positive" ? "text-emerald-600" : "text-primary";
   return (
-    <Card className="rounded-xl border border-border p-3 sm:p-4">
-      <CardContent className="flex items-start gap-2 pt-2 sm:gap-3">
-        <div className={`shrink-0 rounded-lg bg-muted p-1.5 sm:p-2 ${colorClass}`}>
-          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground leading-tight">{title}</p>
-          <p className="mt-0.5 text-base font-bold leading-tight sm:text-lg break-words">{value}</p>
-          {sub ? <p className="text-xs text-muted-foreground leading-tight">{sub}</p> : null}
-        </div>
-      </CardContent>
+    <Card className="min-w-0 rounded-2xl p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium leading-snug text-muted-foreground sm:text-sm">{title}</p>
+        <Icon className={"h-4 w-4 shrink-0 " + accent} />
+      </div>
+      <p className="mt-3 break-words text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
     </Card>
   );
 }
-
-function formatMonth(value: string) {
-  const [y, m] = value.split("-");
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  if (!y || !m || value.length !== 7) return value;
-  return months[Number(m) - 1] ? `${months[Number(m) - 1]}/${y.slice(2)}` : value;
+function shortDay(value: string) {
+  if (value.length === 7) {
+    const [year, month] = value.split("-");
+    return month + "/" + year.slice(2);
+  }
+  const [year, month, day] = value.split("-");
+  return day && month && year ? day + "/" + month : value;
 }
-
-function formatDay(value: string) {
-  const [, month, day] = value.split("-");
-  return month && day ? `${day}/${month}` : value;
-}
+const moneyTick = (v: number) => new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(v);
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  const [upcomingPage, setUpcomingPage] = useState(1);
-  const [upcomingPageSize, setUpcomingPageSize] = useState(10);
-  const [upcomingSearch, setUpcomingSearch] = useState("");
-  const [debouncedUpcomingSearch, setDebouncedUpcomingSearch] = useState("");
-
-  // debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedUpcomingSearch(upcomingSearch), 300);
-    return () => clearTimeout(timer);
-  }, [upcomingSearch]);
-
   const range = useMemo(() => periodToRange(period, customFrom, customTo), [period, customFrom, customTo]);
-
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["dashboards", "overview", range.from, range.to],
+    queryFn: async () => {
+      const q = new URLSearchParams({ from: range.from, to: range.to });
+      const response = await api.get("/api/v1/dashboards/overview?" + q.toString());
+      return response.data.data as DashboardOverview;
+    },
     refetchInterval: 60_000,
+  });
+  const { data: upcoming, isPending: loadingUpcoming } = useQuery({
+    queryKey: ["dashboards", "upcoming-due", "home"],
     queryFn: async () => {
-      const params = new URLSearchParams({ from: range.from, to: range.to });
-      const res = await api.get(`/api/v1/dashboards/overview?${params.toString()}`);
-      return (res.data?.data ?? {}) as DashboardOverview;
+      const response = await api.get("/api/v1/dashboards/upcoming-due?page=1&pageSize=6");
+      return response.data.data.items as DashboardOverview["upcomingDue"];
     },
+    refetchInterval: 60_000,
   });
 
-  const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
-    queryKey: ["dashboards", "upcoming-due", upcomingPage, upcomingPageSize, debouncedUpcomingSearch],
-    queryFn: async () => {
-      const params = new URLSearchParams({ page: String(upcomingPage), pageSize: String(upcomingPageSize) });
-      if (debouncedUpcomingSearch) params.set("search", debouncedUpcomingSearch);
-      const res = await api.get(`/api/v1/dashboards/upcoming-due?${params.toString()}`);
-      return res.data?.data as { items: DashboardOverview["upcomingDue"]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
-    },
-  });
-
-  const upcomingDue = upcomingData?.items ?? [];
-  const upcomingMeta = upcomingData?.meta;
-
-  const d = data ?? ({} as DashboardOverview);
-  const financialFlow = Array.isArray(d.financialFlow) ? d.financialFlow : [];
-  const flowLabel = (value: string) => value.length === 7 ? formatMonth(value) : formatDay(value);
-  const receiptsSeries = Array.isArray(d.receiptsSeries) ? d.receiptsSeries : [];
-  const portfolioComposition = Array.isArray(d.portfolioComposition) ? d.portfolioComposition : [];
-  const aging = Array.isArray(d.aging) ? d.aging : [];
-  const topClients = Array.isArray(d.topClients) ? d.topClients : [];
-  const overdueList = Array.isArray(d.overdueList) ? d.overdueList : [];
-  const installmentStatus = d.installmentStatus ?? { paid: 0, pending: 0, partiallyPaid: 0, overdue: 0, canceled: 0 };
-
-  const statusPieData = [
-    { name: "Pagas", value: installmentStatus.paid },
-    { name: "Pendentes", value: installmentStatus.pending },
-    { name: "Parciais", value: installmentStatus.partiallyPaid },
-    { name: "Atrasadas", value: installmentStatus.overdue },
-    { name: "Canceladas", value: installmentStatus.canceled },
-  ].filter((x) => x.value > 0);
-
-  const statusColors = ["#059669", "#2563eb", "#d97706", "#be123c", "#6b7280"];
+  const info = data;
+  const performance = info?.collectionPerformance;
+  const performanceRate = performance?.rate;
+  const ratio = typeof performanceRate === "number" ? Math.max(0, Math.min(100, performanceRate)) : 0;
+  const debtRows = info?.overdueList.slice(0, 6) ?? [];
+  const dueRows = upcoming ?? [];
+  const flow = info?.financialFlow ?? [];
 
   if (isError) {
-    return (
-      <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Dashboard</h2>
-        <Card className="rounded-xl border border-border p-6">
-          <CardContent className="text-center">
-            <p className="text-destructive">{getApiErrorMessage(error, "Erro ao carregar dashboard")}</p>
-            <Button className="mt-4" onClick={() => refetch()}>
-              <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <Card className="space-y-3 p-6">
+      <h1 className="text-xl font-semibold">Visão geral</h1>
+      <p className="text-sm text-destructive">{getApiErrorMessage(error, "Não foi possível carregar os indicadores")}</p>
+      <Button onClick={() => refetch()}><RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente</Button>
+    </Card>;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header + Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 pb-6 sm:space-y-7">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">Entradas no período e posição atual da carteira · atualização periódica.</p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Visão geral</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Recebimentos do período e posição atual da carteira.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            {PERIOD_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+            {PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
-          {period === "custom" ? (
-            <>
-              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-36" />
-              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-36" />
-            </>
-          ) : null}
+          {period === "custom" && <>
+            <Input aria-label="Data inicial" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-36" />
+            <Input aria-label="Data final" type="date" min={customFrom || undefined} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-36" />
+          </>}
         </div>
-      </div>
+      </header>
 
-      {/* Destaques operacionais: informações que direcionam cobrança e caixa. */}
-      <h3 className="text-sm font-semibold text-muted-foreground">Operação e recebimentos</h3>
-      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        <KpiCard title="Recebido no período" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} variant="success" />
-        <KpiCard title="Vencido acumulado" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} sub="posição atual · com encargos" variant="danger" />
-        <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} sub="posição atual · com encargos" />
-        <KpiCard title="A receber no período" value={brl(d.receivableInPeriod ?? 0)} icon={CalendarClock} sub="saldo contratual com vencimento no período" />
-        <KpiCard title="Capital concedido" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
-        <KpiCard title="Carteira vencida (%)" value={percent(d.delinquencyRate ?? 0)} icon={Target} sub="valor vencido / carteira em aberto" variant={d.delinquencyRate && d.delinquencyRate > 10 ? "danger" : "default"} />
-            </div>
+      {isPending ? <Card className="p-6 text-sm text-muted-foreground">Carregando indicadores...</Card> : <>
+        <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Metric title="Recebido no período" value={brl(info?.receivedTotal ?? 0)} description="Entradas confirmadas" Icon={TrendingUp} variant="positive" />
+          <Metric title="Total vencido" value={brl(info?.overdueAmount ?? 0)} description="Em aberto, incluindo encargos" Icon={AlertTriangle} variant="warning" />
+          <Metric title="Carteira em aberto" value={brl(info?.openPortfolio ?? 0)} description="Posição atual, incluindo encargos" Icon={Wallet} />
+          <Metric title="A vencer em 7 dias" value={brl(info?.dueNext7Amount ?? 0)} description="Saldo contratual, incluindo hoje" Icon={CalendarClock} />
+        </section>
 
-      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-        <Badge variant="secondary">Parcelas atrasadas: {d.overdueInstallments ?? 0}</Badge>
-        <Badge variant="secondary">Clientes em atraso: {d.overdueClients ?? 0}</Badge>
-        <Badge variant="secondary">Vencem hoje: {d.dueToday ?? 0}</Badge>
-        <Badge variant="secondary">Vencem nos próximos 7 dias (com hoje): {d.dueNext7Days ?? 0}</Badge>
-        <Badge variant="secondary">Juros recebidos: {brl(d.receivedInterest ?? 0)}</Badge>
-        <Badge variant="secondary">Multas e mora recebidas: {brl(d.receivedCharges ?? 0)}</Badge>
-      </div>
-
-      <h3 className="text-sm font-semibold text-muted-foreground">Cobranças e vencimentos</h3>
-      {/* Operational Tables */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Upcoming Due */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Próximos vencimentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <Input
-                placeholder="Pesquisar por empréstimo, cliente..."
-                value={upcomingSearch}
-                onChange={(e) => { setUpcomingSearch(e.target.value); setUpcomingPage(1); }}
-                className="max-w-sm"
-              />
-            </div>
-            {upcomingLoading ? (
-              <div className="flex h-20 items-center justify-center">
-                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : upcomingDue.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
-            ) : (
-              <>
-                <SimpleTable
-                  columns={[
-                    { key: "clientName", label: "Cliente" },
-                    { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
-                    { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
-                    { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                    { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
-                    { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Abrir</Button> },
-                  ]}
-                  data={upcomingDue}
-                />
-                <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <select
-                    value={upcomingPageSize}
-                    onChange={(e) => { setUpcomingPageSize(Number(e.target.value)); setUpcomingPage(1); }}
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value={10}>10 por página</option>
-                    <option value={20}>20 por página</option>
-                    <option value={50}>50 por página</option>
-                    <option value={100}>100 por página</option>
-                  </select>
-                  <Pagination page={upcomingPage} totalPages={upcomingMeta?.totalPages ?? 1} onPageChange={setUpcomingPage} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,1fr)]">
+          <Card className="rounded-2xl p-5">
+            <CardHeader className="mb-3">
+              <CardTitle className="text-base">Cumprimento dos vencimentos</CardTitle>
+              <p className="text-xs text-muted-foreground">Parcelas com vencimento no período até hoje; inclui pagamentos antecipados e exclui multas.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor contratual previsto</p>
+                  <p className="text-xl font-semibold tabular-nums">{brl(performance?.scheduled ?? 0)}</p>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Overdue List */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Cobranças prioritárias · parcelas em atraso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overdueList.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma parcela em atraso.</p>
-            ) : (
-              <SimpleTable
-                columns={[
-                  { key: "clientName", label: "Cliente" },
-                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
-                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
-                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                  { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
-                  { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
-                  { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
-                  { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Abrir</Button> },
-                ]}
-                data={overdueList}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-
-      <h3 className="text-sm font-semibold text-muted-foreground">Análise financeira</h3>
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Financial Flow */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Fluxo financeiro</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Valor já quitado dessas parcelas</p>
+                  <p className="text-xl font-semibold tabular-nums">{brl(performance?.settled ?? 0)}</p>
+                </div>
               </div>
-            ) : financialFlow.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período.</p>
-            ) : (
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ratio} aria-label="Percentual de vencimentos cumpridos">
+                <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: ratio + "%" }} />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">{performanceRate === null || performanceRate === undefined ? "Sem parcelas vencidas nesse período" : "Realização das parcelas previstas"}</span>
+                <strong className="text-lg tabular-nums">{performanceRate === null || performanceRate === undefined ? "—" : percent(performanceRate)}</strong>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl p-5">
+            <CardHeader className="mb-3">
+              <CardTitle className="text-base">Atenção necessária</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">Clientes com atraso</span><strong className="tabular-nums">{info?.overdueClients ?? 0}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">Parcelas vencidas</span><strong className="tabular-nums">{info?.overdueInstallments ?? 0}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Percentual da carteira vencida</span><strong className="tabular-nums">{percent(info?.delinquencyRate ?? 0)}</strong>
+              </div>
+              <Link to="/defaults" className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Ir para cobranças <ArrowRight className="h-4 w-4" /></Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2" aria-label="Cobranças e próximos vencimentos">
+          <Card className="min-w-0 rounded-2xl p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold">Cobranças prioritárias</h2>
+                <p className="text-xs text-muted-foreground">Mais dias de atraso primeiro; maior dívida no desempate.</p>
+              </div>
+              <Link className="inline-flex items-center gap-1 text-sm text-primary hover:underline" to="/defaults">Ver todas <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+            {debtRows.length === 0 ? <div className="flex gap-2 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> Nenhuma parcela vencida.</div> :
+              <div className="divide-y divide-border">
+                {debtRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{row.clientName}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {row.daysOverdue} dias em atraso · {dateBr(row.dueDate)}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums">{brl(row.updatedRemainingBalance)}</p>
+                    <Button aria-label={"Abrir empréstimo de " + row.clientName} variant="ghost" size="sm" className="mt-1 h-8 px-2" onClick={() => navigate("/loans/" + row.loanId)}>Abrir <ChevronRight className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>)}
+              </div>}
+          </Card>
+          <Card className="min-w-0 rounded-2xl p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold">Próximos vencimentos</h2>
+                <p className="text-xs text-muted-foreground">Parcelas abertas a partir de hoje.</p>
+              </div>
+              <Link className="inline-flex items-center gap-1 text-sm text-primary hover:underline" to="/installments">Ver parcelas <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+            {loadingUpcoming ? <p className="py-3 text-sm text-muted-foreground">Carregando vencimentos...</p> : dueRows.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Nenhum vencimento futuro.</p> :
+              <div className="divide-y divide-border">
+                {dueRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{row.clientName}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {dateBr(row.dueDate)}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums">{brl(row.remainingBalance)}</p>
+                    <Button aria-label={"Abrir empréstimo de " + row.clientName} variant="ghost" size="sm" className="mt-1 h-8 px-2" onClick={() => navigate("/loans/" + row.loanId)}>Abrir <ChevronRight className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>)}
+              </div>}
+          </Card>
+        </section>
+
+        <Card className="min-w-0 rounded-2xl p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold">Recebimentos e vencimentos previstos</h2>
+              <p className="text-xs text-muted-foreground">Movimentação recebida × parcelas contratualmente previstas em cada data.</p>
+            </div>
+            <Link to="/reports" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">Relatórios <ArrowRight className="h-3.5 w-3.5" /></Link>
+          </div>
+          {flow.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">Nenhum movimento no período.</p> :
+            <div className="h-64 w-full sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financialFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={flow} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickFormatter={flowLabel} tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={flowLabel} />
+                  <XAxis dataKey="month" tickFormatter={shortDay} tick={{ fontSize: 11 }} />
+                  <YAxis width={65} tickFormatter={moneyTick} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={shortDay} />
                   <Legend />
-                  <Bar dataKey="granted" name="Capital emprestado" fill="#2563eb" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="received" name="Recebido" fill="#059669" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="predicted" name="Previsto" fill="#d97706" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="received" name="Recebido" fill="#059669" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="predicted" name="Previsto" fill="#94a3b8" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </CardContent>
+            </div>}
+          <p className="mt-2 text-xs text-muted-foreground">O recebido inclui pagamentos de qualquer vencimento; a taxa de realização acima considera apenas as parcelas da janela selecionada.</p>
         </Card>
-
-        {/* Receipts Evolution */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Evolução dos recebimentos</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : receiptsSeries.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sem recebimentos no período.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={receiptsSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="receivedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#059669" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#059669" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" tickFormatter={flowLabel} tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={flowLabel} />
-                  <Area type="monotone" dataKey="received" name="Recebido" stroke="#059669" strokeWidth={2} fill="url(#receivedGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <details className="rounded-xl border border-border p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-foreground">Mais análises: carteira, status, aging e clientes</summary>
-        <div className="mt-4 space-y-6">
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Portfolio Composition */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Composição da carteira</CardTitle>
-          </CardHeader>
-          <CardContent className="h-64">
-            {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : portfolioComposition.every((x) => x.value === 0) ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={portfolioComposition} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false}>
-                    {portfolioComposition.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => brl(Number(v))} />
-                  <Legend verticalAlign="bottom" height={24} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Installment Status */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Status das parcelas</CardTitle>
-          </CardHeader>
-          <CardContent className="h-64">
-            {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : statusPieData.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={statusPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false}>
-                    {statusPieData.map((_, i) => (
-                      <Cell key={i} fill={statusColors[i % statusColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={24} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Aging */}
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Aging da inadimplência</CardTitle>
-          </CardHeader>
-          <CardContent className="h-64">
-            {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : aging.every((a) => a.amount === 0) ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sem inadimplência.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={aging} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={70} />
-                  <Tooltip formatter={(v) => brl(Number(v))} />
-                  <Bar dataKey="amount" name="Valor" fill="#be123c" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top Clients */}
-      {topClients.length > 0 ? (
-        <Card className="rounded-xl border border-border p-4">
-          <CardHeader>
-            <CardTitle className="text-base">Top 5 clientes por saldo em aberto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SimpleTable
-              columns={[
-                { key: "clientName", label: "Cliente" },
-                { key: "outstandingBalance", label: "Saldo em aberto", render: (v) => brl(Number(v)) },
-                { key: "overdueAmount", label: "Valor vencido", render: (v) => brl(Number(v)) },
-              ]}
-              data={topClients}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-
-        </div>
-      </details>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : null}
+      </>}
     </div>
   );
 }
