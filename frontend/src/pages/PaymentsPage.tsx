@@ -225,9 +225,13 @@ export default function PaymentsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Recebimentos</h2>
+    <div className="space-y-5 pb-6 sm:space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Movimentação</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Recebimentos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Pagamentos confirmados e lançamentos em contratos.</p>
+        </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => setOpen(true)}>Lançar pagamento</Button>
           <Button
@@ -243,7 +247,7 @@ export default function PaymentsPage() {
             Exportar CSV
           </Button>
         </div>
-      </div>
+      </header>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Input
