@@ -173,7 +173,7 @@ export type DashboardOverview = {
   dueNext7Days: number;
   overdueInstallments: number;
   delinquencyRate: number;
-  receivableThisMonth: number;
+  receivableInPeriod: number;
   receiptsSeries: { day: string; received: number }[];
   financialFlow: { month: string; granted: number; received: number; predicted: number }[];
   portfolioComposition: { name: string; value: number }[];

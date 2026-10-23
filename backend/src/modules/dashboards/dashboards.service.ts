@@ -334,7 +334,8 @@ async overview(query: DashboardQuery) {
           AND ("dueDate" AT TIME ZONE 'UTC')::date <= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
       prisma.$queryRaw<{ sum: string }[]>`
         SELECT COALESCE(SUM("totalDue"), 0) AS sum FROM "Installment"
-        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}`,
+        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}`,
+
       prisma.$queryRaw<{ status: string; c: bigint }[]>`
         SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
     ]);
@@ -558,7 +559,7 @@ async overview(query: DashboardQuery) {
       dueNext7Days: Number(dueNext7Rows[0]?.c ?? 0),
       overdueInstallments: Number(overdueCountRows[0]?.c ?? 0),
       delinquencyRate: Math.round(delinquencyRate * 100) / 100,
-      receivableThisMonth: Number(receivableThisMonthRows[0]?.sum ?? 0),
+      receivableInPeriod: Number(receivableThisMonthRows[0]?.sum ?? 0),
       // Charts
       receiptsSeries,
       financialFlow,

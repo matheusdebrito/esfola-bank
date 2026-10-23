@@ -245,7 +245,7 @@ export default function DashboardPage() {
         <KpiCard title="Vencem hoje" value={String(d.dueToday ?? 0)} icon={CalendarClock} />
         <KpiCard title="Vencem em 7 dias" value={String(d.dueNext7Days ?? 0)} icon={Clock} />
         <KpiCard title="Parcelas atrasadas" value={String(d.overdueInstallments ?? 0)} icon={AlertTriangle} variant="danger" />
-        <KpiCard title="A receber no mês" value={brl(d.receivableThisMonth ?? 0)} icon={DollarSign} />
+        <KpiCard title="A receber" value={brl(d.receivableInPeriod ?? 0)} icon={DollarSign} sub="no período" />
       </div>
 
       {/* Charts Row 1 */}
