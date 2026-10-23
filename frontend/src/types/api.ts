@@ -189,6 +189,7 @@ export type DashboardOverview = {
   topClients: { clientId: string; clientName: string; outstandingBalance: number; overdueAmount: number }[];
   upcomingDue: {
     clientId: string;
+    loanId: string;
     clientName: string;
     loanCode: string;
     installmentNumber: number;
@@ -198,6 +199,7 @@ export type DashboardOverview = {
   }[];
   overdueList: {
     clientId: string;
+    loanId: string;
     clientName: string;
     loanCode: string;
     installmentNumber: number;
