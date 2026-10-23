@@ -55,37 +55,39 @@ const PERIOD_OPTIONS = [
 ];
 
 function periodToRange(period: string, customFrom: string, customTo: string): { from: string; to: string } {
-  const now = new Date();
   const tz = "America/Sao_Paulo";
-  const fmt = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
-  const today = fmt(now);
+  const offset = "-03:00";
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD in Brasília
+
+  const startOfDay = (dateStr: string) => `${dateStr}T00:00:00${offset}`;
+  const endOfDay = (dateStr: string) => `${dateStr}T23:59:59.999${offset}`;
 
   switch (period) {
     case "today":
-      return { from: `${today}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+      return { from: startOfDay(today), to: endOfDay(today) };
     case "7days": {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
-      return { from: `${fmt(d)}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+      const d = new Date(today + "T12:00:00Z");
+      d.setUTCDate(d.getUTCDate() - 6);
+      const fromStr = d.toISOString().slice(0, 10);
+      return { from: startOfDay(fromStr), to: endOfDay(today) };
     }
     case "month": {
-      const y = now.getFullYear();
-      const m = now.getMonth();
-      const first = new Date(y, m, 1);
-      const last = new Date(y, m + 1, 0);
-      return { from: `${fmt(first)}T00:00:00.000Z`, to: `${fmt(last)}T23:59:59.999Z` };
+      const [y, m] = today.split("-").map(Number);
+      const firstDay = `${y}-${String(m).padStart(2, "0")}-01`;
+      const lastDay = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      return { from: startOfDay(firstDay), to: endOfDay(lastDay) };
     }
     case "year": {
-      const y = now.getFullYear();
-      return { from: `${y}-01-01T00:00:00.000Z`, to: `${y}-12-31T23:59:59.999Z` };
+      const y = Number(today.split("-")[0]);
+      return { from: startOfDay(`${y}-01-01`), to: endOfDay(`${y}-12-31`) };
     }
     case "custom":
       return {
-        from: customFrom ? new Date(customFrom).toISOString() : `${today}T00:00:00.000Z`,
-        to: customTo ? new Date(customTo).toISOString() : `${today}T23:59:59.999Z`,
+        from: customFrom ? startOfDay(customFrom) : startOfDay(today),
+        to: customTo ? endOfDay(customTo) : endOfDay(today),
       };
     default:
-      return { from: `${today}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+      return { from: startOfDay(today), to: endOfDay(today) };
   }
 }
 

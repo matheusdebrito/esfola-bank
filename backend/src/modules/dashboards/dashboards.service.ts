@@ -267,15 +267,18 @@ async overview(query: DashboardQuery) {
     const from = query.from ? new Date(query.from) : null;
     const to = query.to ? new Date(query.to) : null;
 
-    // Default period: current month
-    const now = new Date();
-    const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    const defaultTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    // Default period: current month in Brasília
+    const todayStr = todayCalendarDate();
+    const [defY, defM] = todayStr.split("-").map(Number);
+    const defaultFrom = calendarDateToUtc(`${defY}-${String(defM).padStart(2, "0")}-01`);
+    const nextMonthStr = defM === 12
+      ? `${defY + 1}-01-01`
+      : `${defY}-${String(defM + 1).padStart(2, "0")}-01`;
+    const defaultTo = new Date(calendarDateToUtc(nextMonthStr).getTime() - 1);
 
     const periodFrom = from ?? defaultFrom;
     const periodTo = to ?? defaultTo;
 
-    const todayStr = todayCalendarDate();
     const todayStart = calendarDateToUtc(todayStr);
     const next7Days = calendarDateToUtc(
       new Date(Date.parse(`${todayStr}T00:00:00.000Z`) + 7 * 86_400_000).toISOString().slice(0, 10),
