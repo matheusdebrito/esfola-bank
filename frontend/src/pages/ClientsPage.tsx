@@ -64,6 +64,7 @@ export default function ClientsPage() {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -72,9 +73,9 @@ export default function ClientsPage() {
   }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["clients", debouncedSearch, page],
+    queryKey: ["clients", debouncedSearch, page, pageSize],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await api.get(`/api/v1/clients?${params.toString()}`);
       return res.data.data as { items: Client[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
@@ -266,6 +267,16 @@ export default function ClientsPage() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="max-w-sm"
         />
+        <select
+          value={pageSize}
+          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value={10}>10 por página</option>
+          <option value={20}>20 por página</option>
+          <option value={50}>50 por página</option>
+          <option value={100}>100 por página</option>
+        </select>
       </div>
 
       <Card>

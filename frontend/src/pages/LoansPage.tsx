@@ -53,6 +53,7 @@ export default function LoansPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [settled, setSettled] = useState<string>("");
+  const [pageSize, setPageSize] = useState(20);
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -61,9 +62,9 @@ export default function LoansPage() {
   }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page, settled],
+    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page, settled, pageSize],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (settled) params.set("settled", settled);
       const res = await api.get(`/api/v1/loans?${params.toString()}`);
@@ -217,6 +218,16 @@ export default function LoansPage() {
           <option value="false">Não quitados</option>
           <option value="true">Quitados</option>
         </Select>
+        <select
+          value={pageSize}
+          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value={10}>10 por página</option>
+          <option value={20}>20 por página</option>
+          <option value={50}>50 por página</option>
+          <option value={100}>100 por página</option>
+        </select>
       </div>
 
       <Card>
