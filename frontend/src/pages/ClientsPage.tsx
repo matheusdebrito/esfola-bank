@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,15 @@ export default function ClientsPage() {
   const meta = data?.meta;
 
   const [open, setOpen] = useState(false);
+  const [urlParams, setUrlParams] = useSearchParams();
+  useEffect(() => {
+    if (urlParams.get("new") === "1") {
+      setEditing(null);
+      setForm(emptyForm);
+      setOpen(true);
+      setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
+    }
+  }, [urlParams, setUrlParams]);
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [loanDialog, setLoanDialog] = useState<{ client: Client; loans: any[]; loading: boolean } | null>(null);
