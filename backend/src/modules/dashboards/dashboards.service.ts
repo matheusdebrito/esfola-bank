@@ -445,7 +445,10 @@ async overview(query: DashboardQuery) {
     }));
 
     // --- Overdue list (top 10) ---
-    const overdueList = overdueInstallments.slice(0, 10).map((row) => ({
+    // Prioridade operacional: dias de atraso (desc), seguido do saldo a cobrar.
+    const overdueList = [...overdueInstallments]
+      .sort((a, b) => b.daysOverdue - a.daysOverdue || b.updatedRemainingBalance - a.updatedRemainingBalance)
+      .slice(0, 10).map((row) => ({
       clientId: row.clientId,
       loanId: row.loanId,
       clientName: row.clientName,
