@@ -168,6 +168,11 @@ export type DashboardOverview = {
   openPortfolio: number;
   receivedTotal: number;
   interestReceived: number;
+  receivedPrincipal: number;
+  receivedInterest: number;
+  receivedCharges: number;
+  overdueClients: number;
+  lateChargesOutstanding: number;
   overdueAmount: number;
   activeLoans: number;
   activeClients: number;
