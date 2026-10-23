@@ -9,7 +9,7 @@ const NAV = [
   { name: "Empréstimos", href: "/loans", icon: "💰" },
   { name: "Pagamentos", href: "/payments", icon: "💸" },
   { name: "Parcelas", href: "/installments", icon: "📋" },
-  { name: "Inadimplência", href: "/defaults", icon: "⚠️" },
+  { name: "Cobranças", href: "/defaults", icon: "⚠️" },
   { name: "Auditoria", href: "/audit", icon: "🛡️" },
   { name: "Usuários", href: "/users", icon: "👥" },
   { name: "Políticas", href: "/financial-policies", icon: "⚙️" },
