@@ -367,6 +367,12 @@ export const loansService = {
       throw new ConflictError("Não é possível liquidar empréstimo com parcelas abertas", "LOAN_HAS_OPEN_INSTALLMENTS");
     }
 
+    // Os modelos variável e de pagamento único ainda não geram obrigações neste serviço.
+    // Sem parcelas, uma ativação criaria principal emprestado fora da carteira a receber.
+    if (input.status === "ACTIVE" && loan.installments.length === 0 && loan.billingModel !== "FIXED_INSTALLMENTS") {
+      throw new ConflictError("Modelo de cobrança ainda não possui geração de parcelas; utilize parcelas fixas até que este modelo seja implementado", "LOAN_BILLING_MODEL_NOT_IMPLEMENTED");
+    }
+
     // ao ativar, gera as parcelas se ainda não existirem e o modelo for parcelas fixas
     if (input.status === "ACTIVE" && loan.installments.length === 0 && loan.billingModel === "FIXED_INSTALLMENTS") {
       await this.generateInstallments(loan, actorId);
