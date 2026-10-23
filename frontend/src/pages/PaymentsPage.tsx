@@ -71,8 +71,17 @@ export default function PaymentsPage() {
   const [urlParams, setUrlParams] = useSearchParams();
   useEffect(() => {
     if (urlParams.get("new") === "1") {
+      const preferredLoanId = urlParams.get("loanId");
+      if (preferredLoanId) {
+        setForm(current => ({ ...current, loanId: preferredLoanId }));
+      }
       setOpen(true);
-      setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
+      setUrlParams(previous => {
+        const next = new URLSearchParams(previous);
+        next.delete("new");
+        next.delete("loanId");
+        return next;
+      }, { replace: true });
     }
   }, [urlParams, setUrlParams]);
   const [form, setForm] = useState(emptyForm());
