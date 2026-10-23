@@ -167,6 +167,20 @@ export const paymentsService = {
         });
       }
 
+      // Se todas as parcelas estiverem pagas, liquida o empréstimo automaticamente
+      const allInstallments = await tx.installment.findMany({
+        where: { loanId: input.loanId },
+        select: { status: true },
+      });
+      const allPaid =
+        allInstallments.length > 0 && allInstallments.every((i) => i.status === "PAID");
+      if (allPaid && loan.status === "ACTIVE") {
+        await tx.loan.update({
+          where: { id: input.loanId },
+          data: { status: "LIQUIDATED" },
+        });
+      }
+
       return tx.payment.findUnique({ where: { id: payment.id }, include: { user: true } });
     });
 
@@ -187,6 +201,7 @@ export const paymentsService = {
     });
 
     await invalidationService.mark("payments", `payment:${result!.id}`);
+    await invalidationService.mark("loans", `loan:${input.loanId}`);
     await invalidationService.mark("installments", `loan:${input.loanId}`);
     await invalidationService.mark("dashboards", "dashboards:*");
     await invalidationService.mark("reports", "reports:*");
@@ -339,6 +354,14 @@ export const paymentsService = {
       });
     });
 
+    // Se o empréstimo estava liquidado, reativa (nem todas as parcelas estão pagas)
+    if (loan.status === "LIQUIDATED") {
+      await prisma.loan.update({
+        where: { id: payment.loanId },
+        data: { status: "ACTIVE" },
+      });
+    }
+
     await auditService.log({
       userId: actorId,
       action: "PAYMENT_REVERSE",
@@ -351,6 +374,7 @@ export const paymentsService = {
     });
 
     await invalidationService.mark("payments", `payment:${id}`);
+    await invalidationService.mark("loans", `loan:${payment.loanId}`);
     await invalidationService.mark("installments", `loan:${payment.loanId}`);
     await invalidationService.mark("dashboards", "dashboards:*");
     await invalidationService.mark("reports", "reports:*");
