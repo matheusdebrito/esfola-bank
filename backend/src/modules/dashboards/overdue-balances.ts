@@ -32,6 +32,7 @@ export function calculateOutstandingWithLateCharges(input: {
 
 export type OverdueInstallmentSnapshot = {
   clientId: string;
+  loanId: string;
   clientName: string;
   loanCode: string;
   installmentNumber: number;
@@ -61,6 +62,7 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
       loan: {
         select: {
           code: true,
+          id: true,
           clientId: true,
           client: { select: { name: true } },
           policy: {
@@ -87,6 +89,7 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
     });
     return {
       clientId: row.loan.clientId,
+      loanId: row.loan.id,
       clientName: row.loan.client.name,
       loanCode: row.loan.code,
       installmentNumber: row.number,
