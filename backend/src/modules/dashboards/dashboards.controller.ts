@@ -40,6 +40,14 @@ export const dashboardsController = {
     const data = await dashboardsService.overview(query);
     res.json({ error: false, data });
   }),
+
+  upcomingDue: asyncHandler(async (req: Request, res: Response) => {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 10;
+    const search = req.query.search ? String(req.query.search) : undefined;
+    const data = await dashboardsService.upcomingDue(page, pageSize, search);
+    res.json({ error: false, data });
+  }),
 };
 
 export default dashboardsController;

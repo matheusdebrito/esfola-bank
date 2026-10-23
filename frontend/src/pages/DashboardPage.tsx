@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -138,6 +139,16 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingPageSize, setUpcomingPageSize] = useState(10);
+  const [upcomingSearch, setUpcomingSearch] = useState("");
+  const [debouncedUpcomingSearch, setDebouncedUpcomingSearch] = useState("");
+
+  // debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedUpcomingSearch(upcomingSearch), 300);
+    return () => clearTimeout(timer);
+  }, [upcomingSearch]);
 
   const range = useMemo(() => periodToRange(period, customFrom, customTo), [period, customFrom, customTo]);
 
@@ -150,14 +161,25 @@ export default function DashboardPage() {
     },
   });
 
-  const d = data ?? ({} as DashboardOverview);
+  const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
+    queryKey: ["dashboards", "upcoming-due", upcomingPage, upcomingPageSize, debouncedUpcomingSearch],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(upcomingPage), pageSize: String(upcomingPageSize) });
+      if (debouncedUpcomingSearch) params.set("search", debouncedUpcomingSearch);
+      const res = await api.get(`/api/v1/dashboards/upcoming-due?${params.toString()}`);
+      return res.data?.data as { items: DashboardOverview["upcomingDue"]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
+    },
+  });
 
+  const upcomingDue = upcomingData?.items ?? [];
+  const upcomingMeta = upcomingData?.meta;
+
+  const d = data ?? ({} as DashboardOverview);
   const financialFlow = Array.isArray(d.financialFlow) ? d.financialFlow : [];
   const receiptsSeries = Array.isArray(d.receiptsSeries) ? d.receiptsSeries : [];
   const portfolioComposition = Array.isArray(d.portfolioComposition) ? d.portfolioComposition : [];
   const aging = Array.isArray(d.aging) ? d.aging : [];
   const topClients = Array.isArray(d.topClients) ? d.topClients : [];
-  const upcomingDue = Array.isArray(d.upcomingDue) ? d.upcomingDue : [];
   const overdueList = Array.isArray(d.overdueList) ? d.overdueList : [];
   const installmentStatus = d.installmentStatus ?? { paid: 0, pending: 0, partiallyPaid: 0, overdue: 0, canceled: 0 };
 
@@ -402,19 +424,46 @@ export default function DashboardPage() {
             <CardTitle className="text-base">Próximos vencimentos</CardTitle>
           </CardHeader>
           <CardContent>
-            {upcomingDue.length === 0 ? (
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Pesquisar por empréstimo, cliente..."
+                value={upcomingSearch}
+                onChange={(e) => { setUpcomingSearch(e.target.value); setUpcomingPage(1); }}
+                className="max-w-sm"
+              />
+            </div>
+            {upcomingLoading ? (
+              <div className="flex h-20 items-center justify-center">
+                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : upcomingDue.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
             ) : (
-              <SimpleTable
-                columns={[
-                  { key: "clientName", label: "Cliente" },
-                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
-                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
-                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
-                  { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
-                ]}
-                data={upcomingDue}
-              />
+              <>
+                <SimpleTable
+                  columns={[
+                    { key: "clientName", label: "Cliente" },
+                    { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
+                    { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
+                    { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
+                    { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                  ]}
+                  data={upcomingDue}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <select
+                    value={upcomingPageSize}
+                    onChange={(e) => { setUpcomingPageSize(Number(e.target.value)); setUpcomingPage(1); }}
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value={10}>10 por página</option>
+                    <option value={20}>20 por página</option>
+                    <option value={50}>50 por página</option>
+                    <option value={100}>100 por página</option>
+                  </select>
+                  <Pagination page={upcomingPage} totalPages={upcomingMeta?.totalPages ?? 1} onPageChange={setUpcomingPage} />
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

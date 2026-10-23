@@ -101,6 +101,8 @@ O atraso é **calculado** (vencimento anterior à data de hoje): `overdueOnly=tr
 | GET | /dashboards/operational | Atividade operacional | dashboards:read |
 | GET | /dashboards/fiscalization | Eventos de fiscalização | dashboards:read |
 | GET | /dashboards/monthly | Indicadores do mês corrente (fuso de Brasília) | dashboards:read |
+| GET | /dashboards/overview | Dashboard consolidado (KPIs, gráficos, tabelas) | dashboards:read |
+| GET | /dashboards/upcoming-due | Próximos vencimentos (paginado, busca) | dashboards:read |
 
 `delinquencyRate` = valor vencido ÷ carteira em aberto (parcelas `PENDING`/`PARTIALLY_PAID`),
 em percentual. O atraso usa a data-calendário de Brasília, então parcelas que vencem hoje

@@ -574,4 +574,71 @@ async overview(query: DashboardQuery) {
     await cacheService.set(cacheKey, result, DASHBOARD_TTL);
     return result;
   },
+
+  async upcomingDue(page: number = 1, pageSize: number = 10, search?: string) {
+    const skip = (page - 1) * pageSize;
+    const whereConditions: Prisma.Sql[] = [
+      Prisma.sql`i."status" IN ('PENDING', 'PARTIALLY_PAID')`,
+      Prisma.sql`(i."dueDate" AT TIME ZONE 'UTC')::date >= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date`,
+    ];
+    if (search) {
+      whereConditions.push(
+        Prisma.sql`(c."name" ILIKE ${'%' + search + '%'} OR l."code" ILIKE ${'%' + search + '%'})`,
+      );
+    }
+    const whereClause = Prisma.sql`WHERE ${Prisma.join(whereConditions, " AND ")}`;
+
+    const [rows, countRows] = await Promise.all([
+      prisma.$queryRaw<{
+        clientId: string;
+        clientName: string;
+        loanCode: string;
+        installmentNumber: number;
+        dueDate: Date;
+        remainingBalance: string;
+        status: string;
+      }[]>`
+        SELECT
+          l."clientId" AS "clientId",
+          c."name" AS "clientName",
+          l."code" AS "loanCode",
+          i."number" AS "installmentNumber",
+          i."dueDate" AS "dueDate",
+          i."remainingBalance" AS "remainingBalance",
+          i."status" AS "status"
+        FROM "Installment" i
+        JOIN "Loan" l ON i."loanId" = l."id"
+        JOIN "Client" c ON l."clientId" = c."id"
+        ${whereClause}
+        ORDER BY i."dueDate" ASC
+        LIMIT ${pageSize} OFFSET ${skip}`,
+      prisma.$queryRaw<{ total: bigint }[]>`
+        SELECT COUNT(*) AS total
+        FROM "Installment" i
+        JOIN "Loan" l ON i."loanId" = l."id"
+        JOIN "Client" c ON l."clientId" = c."id"
+        ${whereClause}`,
+    ]);
+
+    const total = Number(countRows[0]?.total ?? 0);
+    const items = rows.map((r) => ({
+      clientId: r.clientId,
+      clientName: r.clientName,
+      loanCode: r.loanCode,
+      installmentNumber: r.installmentNumber,
+      dueDate: r.dueDate,
+      remainingBalance: Number(r.remainingBalance),
+      status: r.status,
+    }));
+
+    return {
+      items,
+      meta: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
+  },
 };

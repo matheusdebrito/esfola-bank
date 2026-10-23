@@ -12,5 +12,6 @@ router.get("/operational", authenticate, loadFreshUser, requirePermission("dashb
 router.get("/fiscalization", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.fiscalization);
 router.get("/monthly", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.monthly);
 router.get("/overview", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.overview);
+router.get("/upcoming-due", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.upcomingDue);
 
 export default router;
