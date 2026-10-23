@@ -7,7 +7,7 @@ import {
   todayCalendarDate,
 } from "../../shared/calendar";
 import type { DashboardQuery } from "./dashboards.schema";
-import { loadOverdueInstallments, summarizeOverdueInstallments } from "./overdue-balances";
+import { computeInstallmentStatusCounts, loadOverdueInstallments, summarizeOverdueInstallments } from "./overdue-balances";
 
 const DASHBOARD_TTL = 60; // segundos
 
@@ -331,16 +331,7 @@ async overview(query: DashboardQuery) {
     for (const row of installmentStatusRows) {
       statusMap[row.status] = Number(row.c);
     }
-    const overdueCount = overdueInstallments.length;
-    const overduePartialCount = overdueInstallments.filter((item) => item.status === "PARTIALLY_PAID").length;
-    const overduePendingCount = overdueCount - overduePartialCount;
-    const installmentStatus = {
-      paid: statusMap.PAID ?? 0,
-      pending: Math.max(0, (statusMap.PENDING ?? 0) - overduePendingCount),
-      partiallyPaid: Math.max(0, (statusMap.PARTIALLY_PAID ?? 0) - overduePartialCount),
-      overdue: overdueCount,
-      canceled: statusMap.CANCELED ?? 0,
-    };
+    const installmentStatus = computeInstallmentStatusCounts(statusMap, overdueInstallments);
 
     // --- Aging: utilizar os mesmos saldos corrigidos do KPI ---
     const agingBuckets = ["0-30 dias", "31-60 dias", "61-90 dias", "90+ dias"];
