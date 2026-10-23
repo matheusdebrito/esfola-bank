@@ -406,6 +406,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      <details className="rounded-xl border border-border p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-foreground">Mais análises: carteira, status, aging e clientes</summary>
+        <div className="mt-4 space-y-6">
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Portfolio Composition */}
@@ -509,6 +512,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       ) : null}
+
+        </div>
+      </details>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
