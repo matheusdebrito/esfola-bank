@@ -149,7 +149,7 @@ export const installmentsService = {
         where,
         skip,
         take: pageSize,
-        orderBy: [{ loanId: "asc" }, { number: "asc" }],
+        orderBy: wantsOverdue ? [{ dueDate: "asc" }, { remainingBalance: "desc" }] : [{ loanId: "asc" }, { number: "asc" }],
         include: {
           loan: {
             select: {
