@@ -1,10 +1,13 @@
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/api/client";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
   { name: "Relatórios", href: "/reports", icon: "📊" },
+  { name: "Financeiro", href: "/finance", icon: "🏦" },
   { name: "Clientes", href: "/clients", icon: "💳" },
   { name: "Empréstimos", href: "/loans", icon: "💰" },
   { name: "Pagamentos", href: "/payments", icon: "💸" },
@@ -20,6 +23,13 @@ const APP_NAME = "Esfola Bank";
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const { data: currentUser } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: async () => (await api.get("/api/v1/auth/me")).data.data.user as { role: string },
+    staleTime: 60_000,
+    retry: false,
+  });
+  const mayReadFinance = ["ADMIN", "MANAGER", "AUDITOR"].includes(currentUser?.role ?? "");
 
   useEffect(() => {
     setMenuOpen(false);
@@ -63,7 +73,7 @@ export default function Layout() {
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => (
+          {NAV.filter((item) => item.href !== "/finance" || mayReadFinance).map((item) => (
             <NavLink
               key={item.name}
               to={item.href}

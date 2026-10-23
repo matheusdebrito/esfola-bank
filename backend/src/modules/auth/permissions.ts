@@ -22,6 +22,9 @@ export const PERMISSIONS = {
   PAYMENT_READ: "payments:read",
   PAYMENT_REGISTER: "payments:register",
   PAYMENT_REVERSE: "payments:reverse",
+  // Livro-caixa e movimentações financeiras
+  FINANCE_READ: "finance:read",
+  FINANCE_WRITE: "finance:write",
   // Usuários
   USER_READ: "users:read",
   USER_CREATE: "users:create",
@@ -54,6 +57,8 @@ export const rolePermissions: Record<string, Permission[]> = {
     PERMISSIONS.INSTALLMENT_READ,
     PERMISSIONS.PAYMENT_READ,
     PERMISSIONS.PAYMENT_REGISTER,
+    PERMISSIONS.FINANCE_READ,
+    PERMISSIONS.FINANCE_WRITE,
     PERMISSIONS.USER_READ,
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.DASHBOARD_READ,
@@ -80,6 +85,7 @@ export const rolePermissions: Record<string, Permission[]> = {
     PERMISSIONS.LOAN_READ,
     PERMISSIONS.INSTALLMENT_READ,
     PERMISSIONS.PAYMENT_READ,
+    PERMISSIONS.FINANCE_READ,
     PERMISSIONS.USER_READ,
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.DASHBOARD_READ,

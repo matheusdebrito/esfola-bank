@@ -72,6 +72,13 @@ enum PaymentStatus {
   REVERSED
 }
 
+enum FinanceEntryType {
+  CONTRIBUTION
+  WITHDRAWAL
+  EXPENSE
+  DISBURSEMENT
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -89,6 +96,9 @@ enum AuditAction {
   LOAN_STATUS_CHANGE
   PAYMENT_REGISTER
   PAYMENT_REVERSE
+  FINANCE_SETUP
+  FINANCE_ENTRY_CREATE
+  FINANCE_ENTRY_REVERSE
   USER_CREATE
   USER_UPDATE
   USER_STATUS_CHANGE
@@ -120,6 +130,9 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
   payments      Payment[]
+  cashBooks     CashBook[] @relation("CashBookCreator")
+  financeEntries FinanceEntry[] @relation("FinanceEntryCreator")
+  financeReversals FinanceEntry[] @relation("FinanceEntryReverser")
   uploadedDocs  ClientDocument[] @relation("UploadedDocuments")
   loans         Loan[]
 
@@ -214,6 +227,7 @@ model Loan {
   policy           FinancialPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
   installments     Installment[]
   payments         Payment[]
+  disbursements    FinanceEntry[] @relation("LoanDisbursement")
 
   @@index([clientId])
   @@index([userId])
@@ -353,4 +367,44 @@ model FinancialPolicy {
   loans             Loan[]
 
   @@index([active])
+}
+
+/**
+ * Caixa começa em um saldo efetivamente conciliado. Não são lançados
+ * retroativamente desembolsos antigos por inferência de status do empréstimo.
+ */
+model CashBook {
+  id             Int            @id @default(1)
+  openingBalance Decimal        @db.Decimal(14, 2)
+  startedAt      DateTime       @db.Timestamptz
+  createdAt      DateTime       @default(now()) @db.Timestamptz
+  createdById    String         @db.Uuid
+  creator        User           @relation("CashBookCreator", fields: [createdById], references: [id])
+  entries        FinanceEntry[]
+}
+
+/** Lançamento manual imutável; correções são estornos rastreados. */
+model FinanceEntry {
+  id             String          @id @default(uuid()) @db.Uuid
+  bookId         Int             @default(1)
+  type           FinanceEntryType
+  amount         Decimal         @db.Decimal(14, 2)
+  effectiveAt    DateTime        @db.Timestamptz
+  description    String          @db.VarChar(500)
+  loanId         String?         @db.Uuid
+  idempotencyKey String?         @unique @db.VarChar(128)
+  createdById    String          @db.Uuid
+  createdAt      DateTime        @default(now()) @db.Timestamptz
+  reversedAt     DateTime?       @db.Timestamptz
+  reversedById   String?         @db.Uuid
+  reversalReason String?         @db.VarChar(500)
+
+  book           CashBook        @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  creator        User            @relation("FinanceEntryCreator", fields: [createdById], references: [id])
+  reverser       User?           @relation("FinanceEntryReverser", fields: [reversedById], references: [id])
+  loan           Loan?           @relation("LoanDisbursement", fields: [loanId], references: [id], onDelete: Restrict)
+
+  @@index([effectiveAt])
+  @@index([type, effectiveAt])
+  @@index([reversedAt])
 }

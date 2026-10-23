@@ -20,6 +20,8 @@ export async function seedAdminUser(prisma: any) {
 }
 
 export async function cleanupDb(prisma: any) {
+  await prisma.financeEntry.deleteMany();
+  await prisma.cashBook.deleteMany();
   await prisma.paymentAllocation.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.installment.deleteMany();
