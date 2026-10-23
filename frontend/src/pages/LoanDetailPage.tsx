@@ -71,6 +71,7 @@ export default function LoanDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.byLoan(loanId ?? "") });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(loanId ?? "") });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
