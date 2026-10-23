@@ -40,16 +40,16 @@ export default function Layout() {
           menuOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible",
         )}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <div className="flex shrink-0 flex-col items-center gap-2 border-b border-border px-3 py-3">
           <NavLink
             to="/dashboard"
             aria-label={APP_NAME}
-            className="flex min-w-0 flex-1 items-center justify-start overflow-hidden"
+            className="flex items-center justify-center overflow-hidden"
           >
             <img
               src="/logo.webp"
               alt={APP_NAME}
-              className="h-14 w-auto max-w-full object-contain object-left lg:h-16"
+              className="h-14 w-auto max-w-full object-contain lg:h-16"
             />
           </NavLink>
           <button

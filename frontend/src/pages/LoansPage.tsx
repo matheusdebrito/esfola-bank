@@ -52,6 +52,7 @@ export default function LoansPage() {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [settled, setSettled] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -60,10 +61,11 @@ export default function LoansPage() {
   }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page],
+    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page, settled],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), pageSize: "20" });
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (settled) params.set("settled", settled);
       const res = await api.get(`/api/v1/loans?${params.toString()}`);
       return res.data.data as { items: any[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
@@ -210,6 +212,11 @@ export default function LoansPage() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="max-w-sm"
         />
+        <Select value={settled} onValueChange={(v) => { setSettled(v); setPage(1); }}>
+          <option value="">Todos</option>
+          <option value="false">Não quitados</option>
+          <option value="true">Quitados</option>
+        </Select>
       </div>
 
       <Card>

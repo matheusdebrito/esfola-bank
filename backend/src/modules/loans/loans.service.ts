@@ -178,6 +178,8 @@ export const loansService = {
     const where: any = {};
     if (query.clientId) where.clientId = query.clientId;
     if (query.status) where.status = query.status;
+    if (query.settled === true) where.status = "LIQUIDATED";
+    if (query.settled === false) where.status = { not: "LIQUIDATED" };
     if (query.userId) where.userId = query.userId;
     if (query.search) {
       where.OR = [

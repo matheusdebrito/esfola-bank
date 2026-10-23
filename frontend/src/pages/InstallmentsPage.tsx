@@ -7,6 +7,7 @@ import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SimpleTable } from "@/components/SimpleTable";
 import { Pagination } from "@/components/Pagination";
 import { QUERY_KEYS } from "@/lib/query-keys";
@@ -88,34 +89,19 @@ export function InstallmentActions({ installment }: { installment: Installment }
   };
 
   return (
-    <details className="relative">
-      <summary
-        className="list-none cursor-pointer rounded-md px-2 py-1 text-center text-lg leading-none hover:bg-muted [&::-webkit-details-marker]:hidden"
-        title="Opções"
+    <div className="flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={handleCharge}>
+        Cobrar
+      </Button>
+      <Button
+        size="sm"
+        variant="default"
+        disabled={closed || payMutation.isPending}
+        onClick={() => payMutation.mutate()}
       >
-        ...
-      </summary>
-      <div className="absolute right-0 z-50 mt-1 w-36 rounded-md border bg-background p-1 shadow-md">
-        <button
-          type="button"
-          onClick={handleCharge}
-          className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-        >
-          Cobrar
-        </button>
-        <button
-          type="button"
-          disabled={closed || payMutation.isPending}
-          onClick={(event) => {
-            closeMenu(event);
-            payMutation.mutate();
-          }}
-          className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-        >
-          {payMutation.isPending ? "Baixando..." : "Pago"}
-        </button>
-      </div>
-    </details>
+        {payMutation.isPending ? "Baixando..." : "Pagar"}
+      </Button>
+    </div>
   );
 }
 

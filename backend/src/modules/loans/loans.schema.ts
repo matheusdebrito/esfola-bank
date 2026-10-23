@@ -35,6 +35,7 @@ export const loanListQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(20),
   clientId: z.string().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "LIQUIDATED", "CANCELED", "RENEGOTIATED"]).optional(),
+  settled: z.enum(["true", "false"]).transform((v) => v === "true").optional(),
   userId: z.string().optional(),
   search: z.string().optional(),
 });
