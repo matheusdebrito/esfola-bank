@@ -21,36 +21,72 @@ docker-compose.yml
 README.md
 ```
 
-## Comandos
+## 🚀 Primeira execução (passo a passo)
 
-### 1. Copiar variáveis de ambiente
+### 1. Clonar o repositório
+
 ```bash
-cp .env.example .env
-# Ajuste os segredos no .env (nunca commitar valores reais)
+git clone https://github.com/matheusdebrito/esfola-bank.git
+cd esfola-bank
 ```
 
-### 2. Subir ambiente
+### 2. Configurar variáveis de ambiente
+
+```bash
+cp .env.example .env
+```
+
+Abra o `.env` e ajuste os segredos (nunca commitar valores reais). Os valores padrão de desenvolvimento já funcionam para rodar localmente.
+
+### 3. Subir os containers
+
 ```bash
 docker compose up -d
 ```
 
-### 3. Migrations
+Aguarde todos os containers ficarem `healthy` (verifique com `docker compose ps`).
+
+### 4. Aplicar migrações do banco de dados
+
 ```bash
 docker compose exec backend npx prisma generate
 docker compose exec backend npx prisma migrate deploy
 ```
 
-O histórico de migrations fica em `backend/prisma/migrations/` (baseline `0001_init`).
-
-> **Banco criado antes da pasta `migrations`:** marque o baseline como aplicado uma única vez,
-> sem recriar as tabelas:
+> **Banco criado antes da pasta `migrations` (ex.: banco legado):** marque o baseline como aplicado uma única vez, sem recriar as tabelas:
 > ```bash
 > docker compose exec backend npx prisma migrate resolve --applied 0001_init
 > docker compose exec backend npx prisma migrate status
 > ```
 > Em bancos novos, o `migrate deploy` já cria toda a estrutura.
 
-### 4. Backend (local)
+### 5. Verificar se o backend respondeu
+
+```bash
+curl http://localhost:4000/health
+# Esperado: {"status":"ok","service":"emprestimo-backend","env":"development"}
+```
+
+### 6. Acessar a aplicação
+
+- **Frontend**: `http://localhost:5173`
+- **Backend API**: `http://localhost:4000/api/v1`
+
+O backend cria automaticamente um administrador **somente quando não existe nenhum usuário** no banco, usando `ADMIN_EMAIL` e `ADMIN_PASSWORD` do `.env`.
+
+**Credenciais padrão de desenvolvimento:**
+
+| Perfil | Email | Senha |
+|--------|-------|-------|
+| Admin | `admin@emprestimo.local` | `Admin@12345` |
+| Operador | `operador@emprestimo.local` | `Operador@12345` |
+
+> Altere a senha após o primeiro login e defina `ADMIN_PASSWORD` forte em produção.
+
+## Comandos úteis
+
+### Backend (local, sem Docker)
+
 ```bash
 cd backend
 npm install
@@ -61,7 +97,8 @@ npm run build       # tsc
 npm run dev         # tsx watch src/server.ts
 ```
 
-### 5. Frontend (local)
+### Frontend (local, sem Docker)
+
 ```bash
 cd frontend
 npm install
@@ -69,35 +106,37 @@ npm run build       # tsc + vite build
 npm run dev         # vite
 ```
 
-### 6. Testes
+### Testes (via Docker)
+
 ```bash
 docker compose exec backend npx vitest run
 ```
 
-### 7. Logs
+### Logs
+
 ```bash
 docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
-### 8. Parar
+### Parar ambiente
+
 ```bash
 docker compose down
 ```
 
-## Primeiro acesso
+### Reiniciar após mudanças no código
 
-- URL: `http://localhost:5173`
-- O backend cria automaticamente um administrador **somente quando não existe nenhum usuário** no banco, usando `ADMIN_EMAIL` e `ADMIN_PASSWORD` do `.env`.
-- Padrão de desenvolvimento: `admin@emprestimo.local` / `Admin@12345`
-- Altere a senha após o primeiro login e defina `ADMIN_PASSWORD` forte em produção.
+```bash
+docker compose up -d --build
+```
 
 ## Fluxo básico de uso
 
 1. **Políticas** → Nova política (juros flat, multa fixa, juros diário; marque "Definir como padrão").
 2. **Clientes** → Novo cliente (CPF válido e telefone para cobrança via WhatsApp).
 3. **Empréstimos** → Novo empréstimo (escolha mensal/diário; ao ativar, as parcelas são geradas automaticamente).
-4. **Pagamentos** → Lançar pagamento (a alocação nas parcelas em aberto é automática).
+4. **Pagamentos** → Lançar pagamento (selecione as parcelas; o valor total é calculado automaticamente).
 
 ## Persistência
 
