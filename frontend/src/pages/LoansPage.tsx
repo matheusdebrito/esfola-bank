@@ -218,16 +218,6 @@ export default function LoansPage() {
           <option value="false">Não quitados</option>
           <option value="true">Quitados</option>
         </Select>
-        <select
-          value={pageSize}
-          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value={10}>10 por página</option>
-          <option value={20}>20 por página</option>
-          <option value={50}>50 por página</option>
-          <option value={100}>100 por página</option>
-        </select>
       </div>
 
       <Card>
@@ -270,7 +260,19 @@ export default function LoansPage() {
             ]}
             data={isLoading ? [] : loans}
           />
-          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
+          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value={10}>10 por página</option>
+              <option value={20}>20 por página</option>
+              <option value={50}>50 por página</option>
+              <option value={100}>100 por página</option>
+            </select>
+            <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
+          </div>
         </CardContent>
       </Card>
 
