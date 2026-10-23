@@ -52,6 +52,7 @@ export function InstallmentActions({ installment }: { installment: Installment }
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(installment.loanId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       const lateCharges = installment.lateCharges?.totalLateCharges ?? 0;
       toast({

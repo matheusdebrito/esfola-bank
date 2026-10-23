@@ -20,8 +20,16 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { loanStatusLabel, periodicityLabel } from "@/lib/status-labels";
 import { useAuth } from "@/hooks/useAuth";
 
-function today() {
-  return toDateInputValue();
+function todayOffset(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toDateInputValue(d);
+}
+
+function nextMonthSameDay() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return toDateInputValue(d);
 }
 
 const EMPTY_FORM = {
@@ -30,7 +38,7 @@ const EMPTY_FORM = {
   principalAmount: "",
   periodicity: "MONTHLY",
   installmentCount: "12",
-  startDate: today(),
+  startDate: nextMonthSameDay(),
   contractTerms: "",
   observations: "",
   activate: true,
@@ -109,7 +117,7 @@ export default function LoansPage() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setOpen(false);
-      setForm({ ...EMPTY_FORM, startDate: today() });
+      setForm({ ...EMPTY_FORM, startDate: nextMonthSameDay() });
       if (activationError) {
         toast({ title: "Empréstimo salvo como rascunho", description: activationError, variant: "destructive" });
       } else if (form.activate) {
@@ -125,6 +133,15 @@ export default function LoansPage() {
         variant: "destructive",
       }),
   });
+
+  useEffect(() => {
+    setForm((prev) => {
+      if (prev.periodicity === "DAILY") {
+        return { ...prev, startDate: todayOffset(1) };
+      }
+      return { ...prev, startDate: nextMonthSameDay() };
+    });
+  }, [form.periodicity]);
 
   const noPolicies = policies !== undefined && policies.length === 0;
 
