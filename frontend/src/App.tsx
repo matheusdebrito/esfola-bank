@@ -7,6 +7,7 @@ import LoginPage from "@/pages/LoginPage";
 import Layout from "@/components/Layout";
 import DashboardPage from "@/pages/DashboardPage";
 import ReportsPage from "@/pages/ReportsPage";
+import FinancePage from "@/pages/FinancePage";
 import ClientsPage from "@/pages/ClientsPage";
 import ClientDetailPage from "@/pages/ClientDetailPage";
 import LoansPage from "@/pages/LoansPage";
@@ -39,6 +40,7 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="finance" element={<FinancePage />} />
               <Route path="clients" element={<ClientsPage />} />
               <Route path="clients/:clientId" element={<ClientDetailPage />} />
               <Route path="loans" element={<LoansPage />} />
