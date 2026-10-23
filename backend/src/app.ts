@@ -18,6 +18,7 @@ import financialPolicyRoutes from "./modules/financial-policy/financial-policy.r
 import loansRoutes from "./modules/loans/loans.routes";
 import paymentsRoutes from "./modules/payments/payments.routes";
 import installmentsRoutes from "./modules/installments/installments.routes";
+import financeRoutes from "./modules/finance/finance.routes";
 
 export function registerRoutes(app: Application): void {
   app.use("/api/v1/auth", authRoutes);
@@ -30,6 +31,7 @@ export function registerRoutes(app: Application): void {
   app.use("/api/v1/loans", loansRoutes);
   app.use("/api/v1/payments", paymentsRoutes);
   app.use("/api/v1/installments", installmentsRoutes);
+  app.use("/api/v1/finance", financeRoutes);
 }
 
 export function createApp(): Application {
