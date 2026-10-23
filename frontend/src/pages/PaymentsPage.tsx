@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +68,13 @@ export default function PaymentsPage() {
   });
 
   const [open, setOpen] = useState(false);
+  const [urlParams, setUrlParams] = useSearchParams();
+  useEffect(() => {
+    if (urlParams.get("new") === "1") {
+      setOpen(true);
+      setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
+    }
+  }, [urlParams, setUrlParams]);
   const [form, setForm] = useState(emptyForm());
   const [selectedInstallments, setSelectedInstallments] = useState<Set<string>>(new Set());
 
