@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
-import { ArrowRight, CalendarClock, CheckCircle2, AlertTriangle, Wallet, TrendingUp, RefreshCw, ChevronRight } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, AlertTriangle, Wallet, TrendingUp, RefreshCw, ChevronRight, Plus, Landmark, CircleAlert } from "lucide-react";
 import { brl, percent, dateBr } from "@/lib/format";
+import { useAuth } from "@/hooks/useAuth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import type { DashboardOverview } from "@/types/api";
 
@@ -66,13 +67,15 @@ function Metric({ title, value, description, Icon, variant = "default" }: {
 }) {
   const accent = variant === "warning" ? "text-destructive" : variant === "positive" ? "text-emerald-600" : "text-primary";
   return (
-    <Card className="min-w-0 rounded-2xl p-4 sm:p-5">
+    <Card className="group min-w-0 overflow-hidden rounded-2xl border-border/70 p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium leading-snug text-muted-foreground sm:text-sm">{title}</p>
-        <Icon className={"h-4 w-4 shrink-0 " + accent} />
+        <p className="max-w-[80%] text-xs font-medium leading-snug text-muted-foreground sm:text-sm">{title}</p>
+        <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " + (variant === "warning" ? "bg-rose-50" : variant === "positive" ? "bg-emerald-50" : "bg-blue-50")}>
+          <Icon className={"h-4 w-4 " + accent} />
+        </span>
       </div>
-      <p className="mt-3 break-words text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+      <p className="mt-3 break-words text-[clamp(1.05rem,2.2vw,1.65rem)] font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{description}</p>
     </Card>
   );
 }
@@ -88,6 +91,14 @@ const moneyTick = (v: number) => new Intl.NumberFormat("pt-BR", { notation: "com
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const showFinance = can("finance:read");
+  const { data: finance } = useQuery({
+    queryKey: ["finance", "overview"],
+    enabled: showFinance,
+    queryFn: async () => (await api.get("/api/v1/finance/overview")).data.data as { initialized: boolean; availableBalance?: number },
+    staleTime: 30_000,
+  });
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -128,23 +139,29 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 pb-6 sm:space-y-7">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Visão geral</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Recebimentos do período e posição atual da carteira.</p>
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Painel operacional</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Sua operação em um só lugar</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Acompanhe recebimentos, vencimentos e o que precisa de atenção.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            {PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Select value={period} onValueChange={setPeriod} aria-label="Período dos indicadores" className="w-full sm:w-[174px]">
+            {PERIOD_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
           {period === "custom" && <>
-            <Input aria-label="Data inicial" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-36" />
-            <Input aria-label="Data final" type="date" min={customFrom || undefined} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-36" />
+            <Input aria-label="Data inicial" type="date" value={customFrom} onChange={event => setCustomFrom(event.target.value)} className="w-full sm:w-36" />
+            <Input aria-label="Data final" type="date" min={customFrom || undefined} value={customTo} onChange={event => setCustomTo(event.target.value)} className="w-full sm:w-36" />
           </>}
+          {can("loans:create") && <Link to="/loans?new=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:h-10">
+            <Plus className="h-4 w-4" aria-hidden /> Novo empréstimo
+          </Link>}
         </div>
       </header>
 
-      {isPending ? <Card className="p-6 text-sm text-muted-foreground">Carregando indicadores...</Card> : <>
+      {isPending ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Carregando indicadores">
+        {[0, 1, 2, 3].map(index => <Card key={index} className="h-32 animate-pulse bg-muted" />)}
+      </div> : <>
         <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Metric title="Recebido no período" value={brl(info?.receivedTotal ?? 0)} description="Entradas confirmadas" Icon={TrendingUp} variant="positive" />
           <Metric title="Total vencido" value={brl(info?.overdueAmount ?? 0)} description="Em aberto, incluindo encargos" Icon={AlertTriangle} variant="warning" />
@@ -152,6 +169,19 @@ export default function DashboardPage() {
           <Metric title="A vencer em 7 dias" value={brl(info?.dueNext7Amount ?? 0)} description="Saldo contratual, incluindo hoje" Icon={CalendarClock} />
         </section>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground">
+            <CalendarClock className="h-3.5 w-3.5 text-primary" aria-hidden /> {info?.dueToday ?? 0} vencimento(s) hoje
+          </span>
+          {(info?.overdueClients ?? 0) > 0 && <Link to="/defaults" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100">
+            <CircleAlert className="h-3.5 w-3.5" aria-hidden /> {info?.overdueClients ?? 0} cliente(s) em atraso <ArrowRight className="h-3 w-3" />
+          </Link>}
+          {showFinance && finance && <Link to="/finance" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-800 hover:bg-blue-100">
+            <Landmark className="h-3.5 w-3.5" aria-hidden />
+            {finance.initialized ? "Capital disponível: " + brl(finance.availableBalance ?? 0) : "Configurar caixa"}
+            <ArrowRight className="h-3 w-3" />
+          </Link>}
+        </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,1fr)]">
           <Card className="rounded-2xl p-5">
             <CardHeader className="mb-3">
@@ -211,8 +241,9 @@ export default function DashboardPage() {
               <div className="divide-y divide-border">
                 {debtRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{row.clientName}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {row.daysOverdue} dias em atraso · {dateBr(row.dueDate)}</p>
+                    <p className="truncate text-sm font-semibold">{row.clientName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · Venceu em {dateBr(row.dueDate)}</p>
+                    <span className="mt-1 inline-block rounded-md bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">{row.daysOverdue} dias em atraso</span>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold tabular-nums">{brl(row.updatedRemainingBalance)}</p>
@@ -233,8 +264,8 @@ export default function DashboardPage() {
               <div className="divide-y divide-border">
                 {dueRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{row.clientName}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {dateBr(row.dueDate)}</p>
+                    <p className="truncate text-sm font-semibold">{row.clientName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {dateBr(row.dueDate)}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold tabular-nums">{brl(row.remainingBalance)}</p>

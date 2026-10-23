@@ -16,7 +16,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { installmentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
 
-function buildWhatsappUrl(installment: Installment) {
+export function buildWhatsappUrl(installment: Installment) {
   const digits = (installment.clientPhone ?? "").replace(/\D/g, "");
   if (digits.length < 10) return null;
   const phone = digits.startsWith("55") && digits.length >= 12 ? digits : `55${digits}`;
@@ -129,8 +129,12 @@ export default function InstallmentsPage() {
   const meta = data?.meta;
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Parcelas</h2>
+    <div className="space-y-5 pb-6 sm:space-y-6">
+      <header>
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Carteira</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Parcelas</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Vencimentos, pagamentos e encargos atualizados.</p>
+      </header>
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Pesquisar por empréstimo, cliente..."

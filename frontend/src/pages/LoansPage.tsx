@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,8 +93,16 @@ export default function LoansPage() {
   });
 
   const [open, setOpen] = useState(false);
+  const [urlParams, setUrlParams] = useSearchParams();
   const [form, setForm] = useState(EMPTY_FORM);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (urlParams.get("new") === "1" && can("loans:create")) {
+      setOpen(true);
+      setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
+    }
+  }, [urlParams, setUrlParams, can]);
 
   useEffect(() => {
     if (form.policyId || !policies?.length) return;
@@ -200,11 +208,15 @@ export default function LoansPage() {
       : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Empréstimos</h2>
+    <div className="space-y-5 pb-6 sm:space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Operação</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Empréstimos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Contratos, situação da carteira e novos empréstimos.</p>
+        </div>
         <Button onClick={() => setOpen(true)}>Novo empréstimo</Button>
-      </div>
+      </header>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Input

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/hooks/use-toast";
-import { brl, dateBr } from "@/lib/format";
+import { brl, dateTimeBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Banknote, Landmark, Plus, RefreshCw, Undo2 } from "lucide-react";
 
@@ -63,6 +63,7 @@ export default function FinancePage() {
   });
   const mayWrite = ["ADMIN", "MANAGER"].includes(currentUser?.role ?? "");
   const [opening, setOpening] = useState("");
+  const [showEntryForm, setShowEntryForm] = useState(false);
   const [openingConfirmed, setOpeningConfirmed] = useState(false);
   const [kind, setKind] = useState<FinanceEntryType>("CONTRIBUTION");
   const [amount, setAmount] = useState("");
@@ -116,7 +117,7 @@ export default function FinancePage() {
     },
     onSuccess: () => {
       toast({ title: "Movimentação registrada" });
-      setAmount(""); setDescription(""); setLoanId(""); setPage(1); refresh();
+      setAmount(""); setDescription(""); setLoanId(""); setPage(1); setShowEntryForm(false); refresh();
     },
     onError,
   });
@@ -179,9 +180,15 @@ export default function FinancePage() {
     { name: "Resultado operacional de caixa", value: data.operationalCashResult, detail: "Juros e mora recebidos − despesas", Icon: Banknote },
   ];
   return <div className="space-y-6 pb-8">
-    <header>
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Financeiro</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Saldo disponível, entradas e saídas auditadas desde {dateBr(data.startedAt ?? "")}.</p>
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Gestão de caixa</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Financeiro</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Saldo, entradas e saídas desde {dateTimeBr(data.startedAt ?? "")}.</p>
+      </div>
+      {mayWrite && <Button onClick={() => setShowEntryForm(current => !current)} variant={showEntryForm ? "outline" : "default"}>
+        <Plus className="mr-1 h-4 w-4" /> {showEntryForm ? "Fechar lançamento" : "Nova movimentação"}
+      </Button>}
     </header>
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {cashCards.map(({ name, value, detail, Icon }) => <Card key={name} className="min-w-0 rounded-2xl p-4">
@@ -205,7 +212,7 @@ export default function FinancePage() {
       </Card>)}
     </div>
 
-    {mayWrite && <Card className="space-y-4 p-5">
+    {mayWrite && showEntryForm && <Card className="space-y-4 p-5">
       <div><h2 className="text-lg font-semibold">Registrar movimentação</h2>
         <p className="text-xs text-muted-foreground">Pagamentos recebidos são registrados automaticamente pelo módulo Pagamentos. Não os lance novamente aqui.</p>
       </div>
@@ -260,7 +267,7 @@ export default function FinancePage() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{labels[row.type]}{row.reversed ? " · Estornado" : ""}</p>
             <p className="truncate text-xs text-muted-foreground" title={row.description}>{row.description}</p>
-            <p className="text-xs text-muted-foreground">{dateBr(row.date)}</p>
+            <p className="text-xs text-muted-foreground">{dateTimeBr(row.date)}</p>
           </div>
           <div className="shrink-0 text-right">
             <p className={"text-sm font-semibold tabular-nums " + (row.reversed ? "text-muted-foreground line-through" : cashPositive(row.type) ? "text-emerald-600" : "text-destructive")}>

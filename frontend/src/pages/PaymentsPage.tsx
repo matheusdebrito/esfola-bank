@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ import { brl, dateBr, dateTimeBr, toDateTimeInputValue } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { installmentStatusLabel, paymentMethodLabel, paymentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
+import { useAuth } from "@/hooks/useAuth";
 
 function emptyForm() {
   return {
@@ -34,6 +36,7 @@ function emptyForm() {
 export default function PaymentsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -67,6 +70,22 @@ export default function PaymentsPage() {
   });
 
   const [open, setOpen] = useState(false);
+  const [urlParams, setUrlParams] = useSearchParams();
+  useEffect(() => {
+    if (urlParams.get("new") === "1" && can("payments:register")) {
+      const preferredLoanId = urlParams.get("loanId");
+      if (preferredLoanId) {
+        setForm(current => ({ ...current, loanId: preferredLoanId }));
+      }
+      setOpen(true);
+      setUrlParams(previous => {
+        const next = new URLSearchParams(previous);
+        next.delete("new");
+        next.delete("loanId");
+        return next;
+      }, { replace: true });
+    }
+  }, [urlParams, setUrlParams, can]);
   const [form, setForm] = useState(emptyForm());
   const [selectedInstallments, setSelectedInstallments] = useState<Set<string>>(new Set());
 
@@ -169,6 +188,7 @@ export default function PaymentsPage() {
     onSuccess: () => {
       const loanId = form.loanId;
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
       if (loanId) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(loanId) });
@@ -207,11 +227,15 @@ export default function PaymentsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Recebimentos</h2>
+    <div className="space-y-5 pb-6 sm:space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Movimentação</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Recebimentos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Pagamentos confirmados e lançamentos em contratos.</p>
+        </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setOpen(true)}>Lançar pagamento</Button>
+          {can("payments:register") && <Button onClick={() => setOpen(true)}>Lançar pagamento</Button>}
           <Button
             variant="outline"
             onClick={() =>
@@ -225,7 +249,7 @@ export default function PaymentsPage() {
             Exportar CSV
           </Button>
         </div>
-      </div>
+      </header>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Input
