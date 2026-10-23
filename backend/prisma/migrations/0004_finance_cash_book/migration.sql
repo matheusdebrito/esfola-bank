@@ -41,7 +41,8 @@ CREATE TABLE "FinanceEntry" (
   CONSTRAINT "FinanceEntry_reversal" CHECK (("reversedAt" IS NULL AND "reversalReason" IS NULL AND "reversedById" IS NULL) OR ("reversedAt" IS NOT NULL AND "reversalReason" IS NOT NULL AND "reversedById" IS NOT NULL))
 );
 
-CREATE UNIQUE INDEX "FinanceEntry_loanId_key" ON "FinanceEntry"("loanId");
+-- Permite corrigir um desembolso estornado, mas nunca dois desembolsos ativos.
+CREATE UNIQUE INDEX "FinanceEntry_active_loan_unique" ON "FinanceEntry"("loanId") WHERE "loanId" IS NOT NULL AND "reversedAt" IS NULL;
 CREATE UNIQUE INDEX "FinanceEntry_idempotencyKey_key" ON "FinanceEntry"("idempotencyKey");
 CREATE INDEX "FinanceEntry_effectiveAt_idx" ON "FinanceEntry"("effectiveAt");
 CREATE INDEX "FinanceEntry_type_effectiveAt_idx" ON "FinanceEntry"("type","effectiveAt");
