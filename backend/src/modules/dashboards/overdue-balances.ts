@@ -36,6 +36,7 @@ export type OverdueInstallmentSnapshot = {
   clientName: string;
   loanCode: string;
   installmentNumber: number;
+  status: string;
   dueDate: Date;
   totalDue: number;
   remainingBalance: number;
@@ -56,6 +57,7 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
     },
     select: {
       number: true,
+      status: true,
       dueDate: true,
       totalDue: true,
       remainingBalance: true,
@@ -93,6 +95,7 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
       clientName: row.loan.client.name,
       loanCode: row.loan.code,
       installmentNumber: row.number,
+      status: row.status,
       dueDate: row.dueDate,
       totalDue: Number(row.totalDue),
       remainingBalance,
