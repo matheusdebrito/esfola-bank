@@ -215,7 +215,7 @@ export const dashboardsService = {
       prisma.$queryRaw<{ sum: string }[]>`SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
       prisma.$queryRaw<{ c: bigint; sum: string }[]>`
-        SELECT COUNT(*) AS c, COALESCE(SUM("totalDue"), 0) AS sum
+        SELECT COUNT(*) AS c, COALESCE(SUM("remainingBalance"), 0) AS sum
         FROM "Installment"
         WHERE ${OPEN_CONDITION} AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}`,
       loadOverdueInstallments(today),
