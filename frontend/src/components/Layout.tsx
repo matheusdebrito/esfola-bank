@@ -1,15 +1,15 @@
 import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router-dom";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, UsersRound, HandCoins, Wallet, ListChecks, CreditCard,
   ChartNoAxesCombined, Landmark, ScrollText, ShieldCheck, Settings2,
-  Menu, X, Plus, LogOut, CalendarDays,
+  Menu, X, Plus, LogOut, CalendarDays, type LucideIcon,
 } from "lucide-react";
 
-type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+type IconType = LucideIcon;
 type NavItem = { name: string; href: string; icon: IconType; roles?: string[]; end?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
 
