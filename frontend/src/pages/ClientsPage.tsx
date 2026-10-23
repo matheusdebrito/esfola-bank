@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import { Client, ClientDocument } from "@/types/api";
 
@@ -61,13 +62,27 @@ export default function ClientsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", debouncedSearch, page],
     queryFn: async () => {
-      const res = await api.get("/api/v1/clients?page=1&pageSize=20");
-      return res.data.data.items as Client[];
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await api.get(`/api/v1/clients?${params.toString()}`);
+      return res.data.data as { items: Client[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
+
+  const clients = data?.items ?? [];
+  const meta = data?.meta;
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
@@ -91,7 +106,6 @@ export default function ClientsPage() {
 
   const invalidateClients = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.root });
-    queryClient.invalidateQueries({ queryKey: ["client"] });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
   };
@@ -245,6 +259,15 @@ export default function ClientsPage() {
         <Button onClick={openCreate}>Novo cliente</Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por nome, CPF..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+      </div>
+
       <Card>
         <CardHeader><CardTitle>Listagem</CardTitle></CardHeader>
         <CardContent>
@@ -270,8 +293,9 @@ export default function ClientsPage() {
                 ),
               },
             ]}
-            data={isLoading ? [] : data ?? []}
+            data={isLoading ? [] : clients}
           />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
 

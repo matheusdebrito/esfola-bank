@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import { brl, dateBr, percent, toDateInputValue } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -49,13 +50,27 @@ export default function LoansPage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
 
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: QUERY_KEYS.loans.list,
+    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page],
     queryFn: async () => {
-      const res = await api.get("/api/v1/loans?page=1&pageSize=20");
-      return res.data.data.items;
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await api.get(`/api/v1/loans?${params.toString()}`);
+      return res.data.data as { items: any[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
+
+  const loans = data?.items ?? [];
+  const meta = data?.meta;
 
   const { data: clients } = useQuery({
     queryKey: QUERY_KEYS.clients.options,
@@ -188,6 +203,15 @@ export default function LoansPage() {
         <Button onClick={() => setOpen(true)}>Novo empréstimo</Button>
       </div>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por código, cliente, CPF..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+      </div>
+
       <Card>
         <CardHeader><CardTitle>Carteira</CardTitle></CardHeader>
         <CardContent>
@@ -226,8 +250,9 @@ export default function LoansPage() {
                 ),
               },
             ]}
-            data={isLoading ? [] : data}
+            data={isLoading ? [] : loans}
           />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
 

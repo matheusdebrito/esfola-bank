@@ -97,6 +97,14 @@ export const installmentsService = {
       where.status = query.status;
     }
 
+    if (query.search) {
+      where.OR = [
+        { loan: { code: { contains: query.search, mode: "insensitive" } } },
+        { loan: { client: { name: { contains: query.search, mode: "insensitive" } } } },
+        { loan: { client: { cpf: { contains: query.search } } } },
+      ];
+    }
+
     const [installments, total] = await Promise.all([
       prisma.installment.findMany({
         where,

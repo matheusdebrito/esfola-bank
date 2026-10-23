@@ -210,6 +210,13 @@ export const paymentsService = {
       if (query.from) where.receivedAt.gte = new Date(query.from);
       if (query.to) where.receivedAt.lte = new Date(query.to);
     }
+    if (query.search) {
+      where.OR = [
+        { client: { name: { contains: query.search, mode: "insensitive" } } },
+        { reference: { contains: query.search, mode: "insensitive" } },
+        { loan: { code: { contains: query.search, mode: "insensitive" } } },
+      ];
+    }
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({

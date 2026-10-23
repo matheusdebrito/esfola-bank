@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import { brl, dateBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -117,17 +120,39 @@ export function InstallmentActions({ installment }: { installment: Installment }
 }
 
 export default function InstallmentsPage() {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: QUERY_KEYS.installments.list,
+    queryKey: [...QUERY_KEYS.installments.list, debouncedSearch, page],
     queryFn: async () => {
-      const res = await api.get("/api/v1/installments?page=1&pageSize=20");
-      return res.data.data.items as Installment[];
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await api.get(`/api/v1/installments?${params.toString()}`);
+      return res.data.data as { items: Installment[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
+
+  const installments = data?.items ?? [];
+  const meta = data?.meta;
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Parcelas</h2>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por empréstimo, cliente..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+      </div>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
       <Card>
         <CardHeader><CardTitle>Obrigações</CardTitle></CardHeader>
@@ -150,9 +175,10 @@ export default function InstallmentsPage() {
               { key: "daysOverdue", label: "Atraso (dias)" },
               { key: "actions", label: "", render: (_v, row) => <InstallmentActions installment={row} /> },
             ]}
-            data={isLoading ? [] : data ?? []}
+            data={isLoading ? [] : installments}
             mobileActionsAlign="center"
           />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
     </div>

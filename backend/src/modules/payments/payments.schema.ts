@@ -22,6 +22,7 @@ export const paymentCreateSchema = z.object({
 export const paymentListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().optional(),
   clientId: z.string().optional(),
   loanId: z.string().optional(),
   userId: z.string().optional(),
