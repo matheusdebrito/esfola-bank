@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/hooks/use-toast";
-import { brl, dateBr } from "@/lib/format";
+import { brl, dateTimeBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Banknote, Landmark, Plus, RefreshCw, Undo2 } from "lucide-react";
 
@@ -181,7 +181,7 @@ export default function FinancePage() {
   return <div className="space-y-6 pb-8">
     <header>
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Financeiro</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Saldo disponível, entradas e saídas auditadas desde {dateBr(data.startedAt ?? "")}.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Saldo disponível, entradas e saídas auditadas desde {dateTimeBr(data.startedAt ?? "")}.</p>
     </header>
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {cashCards.map(({ name, value, detail, Icon }) => <Card key={name} className="min-w-0 rounded-2xl p-4">
@@ -260,7 +260,7 @@ export default function FinancePage() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{labels[row.type]}{row.reversed ? " · Estornado" : ""}</p>
             <p className="truncate text-xs text-muted-foreground" title={row.description}>{row.description}</p>
-            <p className="text-xs text-muted-foreground">{dateBr(row.date)}</p>
+            <p className="text-xs text-muted-foreground">{dateTimeBr(row.date)}</p>
           </div>
           <div className="shrink-0 text-right">
             <p className={"text-sm font-semibold tabular-nums " + (row.reversed ? "text-muted-foreground line-through" : cashPositive(row.type) ? "text-emerald-600" : "text-destructive")}>
