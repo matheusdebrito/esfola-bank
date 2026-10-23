@@ -11,7 +11,8 @@ import { Pagination } from "@/components/Pagination";
 import { exportToCsv } from "@/lib/csv";
 import { brl, dateBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { AlertTriangle, ArrowRight, Search } from "lucide-react";
+import { AlertTriangle, ArrowRight, Search, MessageCircle } from "lucide-react";
+import { buildWhatsappUrl } from "@/pages/InstallmentsPage";
 import type { Installment, Paged } from "@/types/api";
 
 const ageFilters = [
@@ -57,7 +58,13 @@ export default function DefaultsPage() {
     { key: "updatedRemainingBalance", label: "Em aberto", render: (v: number) => brl(v) },
     { key: "lateCharges", label: "Encargos", render: (v: Installment["lateCharges"]) => brl(v?.totalLateCharges ?? 0) },
     { key: "actions", label: "", render: (_v: unknown, row: Installment) => (
-      <Button size="sm" variant="outline" onClick={() => navigate("/loans/" + row.loanId)}>Abrir contrato <ArrowRight className="ml-1 h-3.5 w-3.5"/></Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => navigate("/loans/" + row.loanId)}>Abrir contrato <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
+        <Button size="sm" variant="secondary" title={row.clientPhone ? "Enviar mensagem de cobrança" : "Cliente sem telefone cadastrado"} disabled={!buildWhatsappUrl(row)}
+          onClick={() => { const url = buildWhatsappUrl(row); if (url) window.open(url, "_blank", "noopener,noreferrer"); }}>
+          <MessageCircle className="mr-1 h-3.5 w-3.5" /> WhatsApp
+        </Button>
+      </div>
     ) },
   ];
 
@@ -104,7 +111,14 @@ export default function DefaultsPage() {
                 <p className="mt-1 text-xs text-muted-foreground">Encargos {brl(row.lateCharges?.totalLateCharges ?? 0)}</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="mt-3 w-full" onClick={() => navigate("/loans/" + row.loanId)}>Abrir contrato <ArrowRight className="ml-1 h-4 w-4"/></Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="min-w-0 flex-1" onClick={() => navigate("/loans/" + row.loanId)}>Contrato <ArrowRight className="ml-1 h-4 w-4"/></Button>
+              <Button size="sm" variant="secondary" className="min-w-0 flex-1" disabled={!buildWhatsappUrl(row)}
+                title={row.clientPhone ? "Enviar cobrança" : "Cliente sem telefone cadastrado"}
+                onClick={() => { const url = buildWhatsappUrl(row); if (url) window.open(url, "_blank", "noopener,noreferrer"); }}>
+                <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
+              </Button>
+            </div>
           </Card>)}
         </div>
       </>}
