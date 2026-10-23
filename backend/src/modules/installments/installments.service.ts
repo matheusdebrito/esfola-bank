@@ -13,6 +13,7 @@ import type { InstallmentListQuery } from "./installments.schema";
 type SafeInstallment = {
   id: string;
   loanId: string;
+  loanCode: string | null;
   clientId: string;
   clientName: string | null;
   clientPhone: string | null;
@@ -59,6 +60,7 @@ function toSafeInstallment(inst: any): SafeInstallment {
   return {
     id: inst.id,
     loanId: inst.loanId,
+    loanCode: inst.loan?.code ?? null,
     clientId: inst.loan.clientId,
     clientName: inst.loan.client?.name ?? null,
     clientPhone: inst.loan.client?.phone ?? null,
@@ -105,6 +107,7 @@ export const installmentsService = {
           loan: {
             select: {
               id: true,
+              code: true,
               clientId: true,
               status: true,
               client: { select: { name: true, phone: true } },
@@ -162,6 +165,7 @@ export const installmentsService = {
         loan: {
           select: {
             id: true,
+            code: true,
             clientId: true,
             status: true,
             client: { select: { name: true, phone: true } },
@@ -197,6 +201,7 @@ export const installmentsService = {
         loan: {
           select: {
             id: true,
+            code: true,
             clientId: true,
             status: true,
             policy: true,

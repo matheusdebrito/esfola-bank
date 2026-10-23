@@ -47,11 +47,16 @@ Prefixo: `/api/v1`. Respostas em JSON. Erros centralizados com `{ error, message
 
 | Método | Endpoint | Descrição | Permissão |
 |--------|----------|-----------|-----------|
-| GET | /loans | Listar empréstimos (paginado) | loans:read |
-| POST | /loans | Criar empréstimo (status DRAFT) | loans:create |
+| GET | /loans | Listar empréstimos (paginado, busca por código/cliente/CPF) | loans:read |
+| POST | /loans | Criar empréstimo (status DRAFT, código EMP-ano-sequencial) | loans:create |
 | GET | /loans/:id | Obter empréstimo (com parcelas e pagamentos) | loans:read |
 | PATCH | /loans/:id | Atualizar empréstimo (apenas DRAFT) | loans:update |
 | PATCH | /loans/:id/status | Mudar status (transições válidas) | loans:status_change |
+| DELETE | /loans/:id | Excluir definitivamente (DRAFT/CANCELED sem histórico) | loans:delete |
+
+Cada empréstimo recebe um `code` no formato `EMP-<ano>-<sequencial de 4 dígitos>`
+(ex.: `EMP-2026-0001`), gerado de forma atômica e reiniciado a cada ano. O código é
+pesquisável e aparece nas listagens de empréstimos, parcelas, inadimplência e pagamentos.
 
 ## Parcelas
 

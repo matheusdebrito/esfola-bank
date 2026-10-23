@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 const EMPTY_FORM = {
   name: "",
@@ -45,7 +46,7 @@ export default function FinancialPoliciesPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["policies"],
+    queryKey: QUERY_KEYS.policies.root,
     queryFn: async () => {
       const res = await api.get("/api/v1/financial-policies?page=1&pageSize=20");
       return res.data.data.items;
@@ -94,7 +95,8 @@ export default function FinancialPoliciesPage() {
       return api.post("/api/v1/financial-policies", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["policies"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.policies.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.policies.options });
       toast({ title: editing ? "Política atualizada" : "Política criada" });
       closeDialog();
     },
@@ -109,7 +111,8 @@ export default function FinancialPoliciesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/v1/financial-policies/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["policies"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.policies.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.policies.options });
       setDeleteTarget(null);
       toast({ title: "Política excluída" });
     },

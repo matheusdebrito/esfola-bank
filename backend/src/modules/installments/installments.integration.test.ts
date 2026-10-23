@@ -61,6 +61,7 @@ describe("installments (integração — requer banco de teste)", () => {
 
     const loan = await prisma.loan.create({
       data: {
+        code: `EMP-${today.slice(0, 4)}-9001`,
         clientId: client.id,
         userId: user.id,
         policyId: policy.id,

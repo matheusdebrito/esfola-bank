@@ -220,7 +220,7 @@ export const paymentsService = {
         include: {
           client: { select: { id: true, name: true } },
           user: { select: { id: true, name: true } },
-          loan: { select: { id: true } },
+          loan: { select: { id: true, code: true } },
           allocations: {
             select: {
               id: true,
@@ -247,6 +247,7 @@ export const paymentsService = {
         return {
           ...toSafePayment(p),
           clientName: p.client?.name ?? null,
+          loanCode: p.loan?.code ?? null,
           allocationCount: allocations.length,
           allocations,
         };

@@ -18,6 +18,7 @@ import { QUERY_KEYS } from "@/lib/query-keys";
 import { brl, dateBr, percent, toDateInputValue } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { loanStatusLabel, periodicityLabel } from "@/lib/status-labels";
+import { useAuth } from "@/hooks/useAuth";
 
 function today() {
   return toDateInputValue();
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
 export default function LoansPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
 
   const { data, isLoading } = useQuery({
     queryKey: QUERY_KEYS.loans.list,
@@ -57,6 +59,7 @@ export default function LoansPage() {
 
   const { data: policies } = useQuery({
     queryKey: QUERY_KEYS.policies.options,
+    refetchOnMount: "always",
     queryFn: async () => {
       const res = await api.get("/api/v1/financial-policies?page=1&pageSize=100");
       return (res.data.data.items as any[]).filter((p) => p.active);
@@ -125,6 +128,34 @@ export default function LoansPage() {
 
   const noPolicies = policies !== undefined && policies.length === 0;
 
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/v1/loans/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
+      setDeleteTarget(null);
+      toast({ title: "Empréstimo excluído" });
+    },
+    onError: (err: unknown) =>
+      toast({
+        title: "Erro ao excluir",
+        description: getApiErrorMessage(err, "Não foi possível excluir o empréstimo"),
+        variant: "destructive",
+      }),
+  });
+
+  const canDelete = (row: any) =>
+    can("loans:delete") &&
+    (row.status === "DRAFT" || row.status === "CANCELED") &&
+    Number(row.installmentCount ?? 0) === 0 &&
+    Number(row.paymentCount ?? 0) === 0;
+
   const selectedPolicy =
     (policies ?? []).find((p: any) => p.id === form.policyId) ??
     (policies ?? [])[0];
@@ -145,6 +176,11 @@ export default function LoansPage() {
         <CardContent>
           <SimpleTable
             columns={[
+              {
+                key: "code",
+                label: "Identificador",
+                render: (v) => <span className="font-mono text-xs">{v}</span>,
+              },
               { key: "clientName", label: "Cliente" },
               { key: "principalAmount", label: "Principal", render: (v) => brl(Number(v)) },
               { key: "interestRatePercent", label: "Juros flat (%)", render: (v) => percent(v) },
@@ -157,7 +193,19 @@ export default function LoansPage() {
                 key: "actions",
                 label: "",
                 render: (_v, row: any) => (
-                  <Button size="sm" onClick={() => navigate(`/loans/${row.id}`)}>Detalhes</Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => navigate(`/loans/${row.id}`)}>Detalhes</Button>
+                    {canDelete(row) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() => setDeleteTarget(row)}
+                      >
+                        Excluir
+                      </Button>
+                    ) : null}
+                  </div>
                 ),
               },
             ]}
@@ -242,6 +290,37 @@ export default function LoansPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(value) => (!value ? setDeleteTarget(null) : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir empréstimo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 p-1 text-sm">
+            <p>
+              Excluir definitivamente o empréstimo{" "}
+              <strong className="font-mono">{deleteTarget?.code}</strong> de{" "}
+              <strong>{deleteTarget?.clientName ?? "cliente"}</strong>?
+            </p>
+            <p className="text-muted-foreground">
+              Esta ação é irreversível e só é permitida para rascunhos ou empréstimos cancelados sem
+              parcelas e sem pagamentos.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir definitivamente"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

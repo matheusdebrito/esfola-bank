@@ -16,6 +16,7 @@ describe("authService.mapUser — permissões", () => {
     expect(user.role).toBe("ADMIN");
     expect(user.permissions).toContain(PERMISSIONS.LOAN_READ);
     expect(user.permissions).toContain(PERMISSIONS.PAYMENT_REVERSE);
+    expect(user.permissions).toContain(PERMISSIONS.LOAN_DELETE);
     expect(user.permissions).toHaveLength(rolePermissions.ADMIN.length);
   });
 
@@ -25,6 +26,7 @@ describe("authService.mapUser — permissões", () => {
     expect(user.permissions).toContain(PERMISSIONS.PAYMENT_REGISTER);
     expect(user.permissions).not.toContain(PERMISSIONS.PAYMENT_REVERSE);
     expect(user.permissions).not.toContain(PERMISSIONS.CLIENT_DELETE);
+    expect(user.permissions).not.toContain(PERMISSIONS.LOAN_DELETE);
   });
 
   it("deve retornar lista vazia para papel desconhecido", () => {

@@ -35,6 +35,10 @@ export const dashboardsController = {
     const data = await dashboardsService.monthly();
     res.json({ error: false, data });
   }),
+  overview: asyncHandler(async (_req: Request, res: Response) => {
+    const data = await dashboardsService.overview();
+    res.json({ error: false, data });
+  }),
 };
 
 export default dashboardsController;

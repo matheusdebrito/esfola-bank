@@ -258,4 +258,43 @@ export const dashboardsService = {
     await cacheService.set(cacheKey, result, DASHBOARD_TTL);
     return result;
   },
+
+  async overview() {
+    const cacheKey = cacheService.buildKey("dashboards", "overview");
+    const cached = await cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
+    // Busca executiva resumida (dados totais, sem filtros de período)
+    const exec = await this.executive({});
+
+    // Série temporal dos últimos 12 meses (últimos 12 meses completos)
+    const series = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now);
+      date.setMonth(date.getMonth() - i);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const ms = calendarDateToUtc(`${year}-${String(month).padStart(2, "0")}-01`);
+      const nextMs = calendarDateToUtc(`${year}-${String((month % 12) + 1).padStart(2, "0")}-01`);
+      const rows = await prisma.$queryRaw<{ received: string }[]>`
+        SELECT COALESCE(SUM("receivedAmount"), 0) AS received
+        FROM "Payment"
+        WHERE "status" = 'REGISTERED'
+          AND "receivedAt" >= ${ms}
+          AND "receivedAt" < ${nextMs}
+      `;
+      series.push({
+        month: `${year}-${String(month).padStart(2, "0")}`,
+        received: Number(rows[0]?.received ?? 0),
+      });
+    }
+
+    const result = {
+      ...exec,
+      series,
+    };
+    await cacheService.set(cacheKey, result, DASHBOARD_TTL);
+    return result;
+  },
 };

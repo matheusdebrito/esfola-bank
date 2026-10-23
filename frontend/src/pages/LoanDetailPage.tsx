@@ -100,7 +100,7 @@ export default function LoanDetailPage() {
         <Button variant="outline" size="sm" onClick={() => navigate("/loans")}>
           ← Voltar aos empréstimos
         </Button>
-        <h2 className="text-xl font-semibold">Empréstimo #{loan.id.slice(-6)}</h2>
+        <h2 className="text-xl font-semibold">Empréstimo {loan.code}</h2>
       </div>
 
       <Card>
@@ -204,7 +204,12 @@ export default function LoanDetailPage() {
         <CardContent>
           <SimpleTable
             columns={[
-              { key: "id", label: "ID", render: (v) => String(v ?? "").slice(-6) },
+              {
+                key: "installments",
+                label: "Parcelas",
+                render: (v: number[] | undefined) =>
+                  v && v.length > 0 ? v.map((n) => `#${n}`).join(", ") : "-",
+              },
               { key: "method", label: "Método", render: (v) => paymentMethodLabel(v) },
               { key: "receivedAmount", label: "Valor", render: (v) => brl(Number(v)) },
               { key: "receivedAt", label: "Recebido em", render: (v) => dateBr(v) },

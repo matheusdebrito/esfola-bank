@@ -24,6 +24,11 @@ export default function DefaultsPage() {
   });
 
   const columns = [
+    {
+      key: "loanCode",
+      label: "Empréstimo",
+      render: (v: string | null) => <span className="font-mono text-xs">{v ?? "-"}</span>,
+    },
     { key: "clientName", label: "Cliente", render: (v: string | null) => v ?? "-" },
     { key: "number", label: "Parcela", render: (v: number) => `#${v}` },
     { key: "dueDate", label: "Vencimento", render: (v: string) => dateBr(v) },

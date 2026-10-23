@@ -133,6 +133,11 @@ export default function InstallmentsPage() {
         <CardContent>
           <SimpleTable
             columns={[
+              {
+                key: "loanCode",
+                label: "Empréstimo",
+                render: (v) => <span className="font-mono text-xs">{v ?? "-"}</span>,
+              },
               { key: "clientName", label: "Cliente", render: (v) => v ?? "-" },
               { key: "number", label: "Nº" },
               { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },

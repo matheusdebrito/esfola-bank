@@ -11,5 +11,6 @@ router.get("/defaults", authenticate, loadFreshUser, requirePermission("dashboar
 router.get("/operational", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.operational);
 router.get("/fiscalization", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.fiscalization);
 router.get("/monthly", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.monthly);
+router.get("/overview", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.overview);
 
 export default router;

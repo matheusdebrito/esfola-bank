@@ -45,6 +45,12 @@ export const loansController = {
     const loan = await loansService.changeStatus(req.params.id, input, authReq.user!.id, req.ip, req.get("user-agent"));
     res.json({ error: false, message: `Status do empréstimo alterado para ${input.status}`, data: { loan } });
   }),
+
+  remove: asyncHandler(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    await loansService.remove(req.params.id, authReq.user!.id, req.ip, req.get("user-agent"));
+    res.status(204).send();
+  }),
 };
 
 export default loansController;
