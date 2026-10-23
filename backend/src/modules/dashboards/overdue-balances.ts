@@ -32,9 +32,11 @@ export function calculateOutstandingWithLateCharges(input: {
 
 export type OverdueInstallmentSnapshot = {
   clientId: string;
+  loanId: string;
   clientName: string;
   loanCode: string;
   installmentNumber: number;
+  status: string;
   dueDate: Date;
   totalDue: number;
   remainingBalance: number;
@@ -55,12 +57,14 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
     },
     select: {
       number: true,
+      status: true,
       dueDate: true,
       totalDue: true,
       remainingBalance: true,
       loan: {
         select: {
           code: true,
+          id: true,
           clientId: true,
           client: { select: { name: true } },
           policy: {
@@ -87,9 +91,11 @@ export async function loadOverdueInstallments(today: string = todayCalendarDate(
     });
     return {
       clientId: row.loan.clientId,
+      loanId: row.loan.id,
       clientName: row.loan.client.name,
       loanCode: row.loan.code,
       installmentNumber: row.number,
+      status: row.status,
       dueDate: row.dueDate,
       totalDue: Number(row.totalDue),
       remainingBalance,
@@ -109,4 +115,23 @@ export function summarizeOverdueInstallments(
     { overdueCents: 0, chargesCents: 0 },
   );
   return { totalOverdue: overdueCents / 100, totalLateCharges: chargesCents / 100 };
+}
+
+/**
+ * Contagens mutuamente exclusivas: uma parcela aberta vencida aparece só em "overdue",
+ * independentemente de já ter recebido um pagamento parcial.
+ */
+export function computeInstallmentStatusCounts(
+  storedCounts: Readonly<Record<string, number>>,
+  overdue: readonly Pick<OverdueInstallmentSnapshot, "status">[],
+) {
+  const overduePending = overdue.filter((row) => row.status === "PENDING").length;
+  const overduePartial = overdue.filter((row) => row.status === "PARTIALLY_PAID").length;
+  return {
+    paid: storedCounts.PAID ?? 0,
+    pending: Math.max(0, (storedCounts.PENDING ?? 0) - overduePending),
+    partiallyPaid: Math.max(0, (storedCounts.PARTIALLY_PAID ?? 0) - overduePartial),
+    overdue: overduePending + overduePartial,
+    canceled: storedCounts.CANCELED ?? 0,
+  };
 }

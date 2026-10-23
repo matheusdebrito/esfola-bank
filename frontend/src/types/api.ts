@@ -168,6 +168,11 @@ export type DashboardOverview = {
   openPortfolio: number;
   receivedTotal: number;
   interestReceived: number;
+  receivedPrincipal: number;
+  receivedInterest: number;
+  receivedCharges: number;
+  overdueClients: number;
+  lateChargesOutstanding: number;
   overdueAmount: number;
   activeLoans: number;
   activeClients: number;
@@ -184,6 +189,7 @@ export type DashboardOverview = {
   topClients: { clientId: string; clientName: string; outstandingBalance: number; overdueAmount: number }[];
   upcomingDue: {
     clientId: string;
+    loanId: string;
     clientName: string;
     loanCode: string;
     installmentNumber: number;
@@ -193,6 +199,7 @@ export type DashboardOverview = {
   }[];
   overdueList: {
     clientId: string;
+    loanId: string;
     clientName: string;
     loanCode: string;
     installmentNumber: number;

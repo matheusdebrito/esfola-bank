@@ -7,7 +7,7 @@ import {
   todayCalendarDate,
 } from "../../shared/calendar";
 import type { DashboardQuery } from "./dashboards.schema";
-import { loadOverdueInstallments, summarizeOverdueInstallments } from "./overdue-balances";
+import { computeInstallmentStatusCounts, loadOverdueInstallments, summarizeOverdueInstallments } from "./overdue-balances";
 
 const DASHBOARD_TTL = 60; // segundos
 
@@ -31,6 +31,21 @@ function periodFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql
 
 const OPEN_CONDITION = Prisma.sql`"status" IN ('PENDING', 'PARTIALLY_PAID')`;
 
+function periodAndFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql {
+  const conditions: Prisma.Sql[] = [];
+  if (query.from) conditions.push(Prisma.sql`${Prisma.raw(`"${dateColumn}"`)} >= ${new Date(query.from)}`);
+  if (query.to) conditions.push(Prisma.sql`${Prisma.raw(`"${dateColumn}"`)} <= ${new Date(query.to)}`);
+  return conditions.length ? Prisma.sql`AND ${Prisma.join(conditions, " AND ")}` : Prisma.empty;
+}
+
+function dueDatePeriod(query: DashboardQuery, fallbackFrom: Date, fallbackTo: Date) {
+  const localDate = (value: Date) => value.toLocaleDateString("en-CA", { timeZone: APP_TIME_ZONE });
+  const from = calendarDateToUtc(localDate(query.from ? new Date(query.from) : fallbackFrom));
+  const to = new Date(calendarDateToUtc(localDate(query.to ? new Date(query.to) : fallbackTo)).getTime() + 86_400_000);
+  return { from, to };
+}
+
+
 export const dashboardsService = {
   async executive(query: DashboardQuery) {
     const cacheKey = cacheService.buildKey("dashboards", "executive", JSON.stringify(query));
@@ -38,7 +53,7 @@ export const dashboardsService = {
     if (cached) return cached;
 
     const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
 
     const [
       totalGrantedRows,
@@ -92,7 +107,7 @@ export const dashboardsService = {
     const cached = await cacheService.get<any>(cacheKey);
     if (cached) return cached;
 
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
     const rows = await prisma.$queryRaw<{ day: Date | string; received: string }[]>`
       SELECT (DATE_TRUNC('day', "receivedAt" AT TIME ZONE ${APP_TIME_ZONE}))::date AS day,
              COALESCE(SUM("receivedAmount"), 0) AS received
@@ -134,7 +149,7 @@ export const dashboardsService = {
 
   async operational(query: DashboardQuery) {
     const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
 
     const [loansCreatedRows, paymentsRegisteredRows, byUserRows] = await Promise.all([
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Loan" ${grantedWhere}`,
@@ -200,7 +215,7 @@ export const dashboardsService = {
       prisma.$queryRaw<{ sum: string }[]>`SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"`,
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
       prisma.$queryRaw<{ c: bigint; sum: string }[]>`
-        SELECT COUNT(*) AS c, COALESCE(SUM("totalDue"), 0) AS sum
+        SELECT COUNT(*) AS c, COALESCE(SUM("remainingBalance"), 0) AS sum
         FROM "Installment"
         WHERE ${OPEN_CONDITION} AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}`,
       loadOverdueInstallments(today),
@@ -245,18 +260,10 @@ async overview(query: DashboardQuery) {
     const periodFrom = from ?? defaultFrom;
     const periodTo = to ?? defaultTo;
 
-    const todayStart = calendarDateToUtc(todayStr);
-    const next7Days = calendarDateToUtc(
-      new Date(Date.parse(`${todayStr}T00:00:00.000Z`) + 7 * 86_400_000).toISOString().slice(0, 10),
-    );
-    const monthStart = calendarDateToUtc(`${todayStr.slice(0, 7)}-01`);
-    const nextMonth = todayStr.slice(5, 7) === "12"
-      ? `${Number(todayStr.slice(0, 4)) + 1}-01-01`
-      : `${todayStr.slice(0, 4)}-${String(Number(todayStr.slice(5, 7)) + 1).padStart(2, "0")}-01`;
-    const monthEnd = calendarDateToUtc(nextMonth);
 
-    const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const duePeriod = dueDatePeriod(query, periodFrom, periodTo);
+    const dailyGrouping = periodTo.getTime() - periodFrom.getTime() <= 32 * 86_400_000;
+    const flowPattern = dailyGrouping ? "YYYY-MM-DD" : "YYYY-MM";
 
     // --- KPIs ---
     const [
@@ -271,6 +278,7 @@ async overview(query: DashboardQuery) {
       dueNext7Rows,
       receivableThisMonthRows,
       installmentStatusRows,
+      receivedBreakdownRows,
     ] = await Promise.all([
       prisma.$queryRaw<{ sum: string }[]>`
         SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"
@@ -297,13 +305,20 @@ async overview(query: DashboardQuery) {
         SELECT COUNT(*) AS c FROM "Installment"
         WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
           AND ("dueDate" AT TIME ZONE 'UTC')::date >= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
-          AND ("dueDate" AT TIME ZONE 'UTC')::date <= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
+          AND ("dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
       prisma.$queryRaw<{ sum: string }[]>`
-        SELECT COALESCE(SUM("totalDue"), 0) AS sum FROM "Installment"
-        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}`,
+        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment"
+        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${duePeriod.from} AND "dueDate" < ${duePeriod.to}`,
 
       prisma.$queryRaw<{ status: string; c: bigint }[]>`
         SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
+      prisma.$queryRaw<{ principal: string; interest: string; charges: string }[]>`
+        SELECT COALESCE(SUM(a."principalAmount"), 0) AS principal,
+               COALESCE(SUM(a."interestAmount"), 0) AS interest,
+               COALESCE(SUM(a."chargesAmount"), 0) AS charges
+        FROM "PaymentAllocation" a
+        JOIN "Payment" p ON p."id" = a."paymentId"
+        WHERE p."status" = 'REGISTERED' AND p."receivedAt" >= ${periodFrom} AND p."receivedAt" <= ${periodTo}`,
     ]);
 
     const { totalOverdue, totalLateCharges } = summarizeOverdueInstallments(overdueInstallments);
@@ -316,14 +331,7 @@ async overview(query: DashboardQuery) {
     for (const row of installmentStatusRows) {
       statusMap[row.status] = Number(row.c);
     }
-    const overdueCount = overdueInstallments.length;
-    const installmentStatus = {
-      paid: statusMap.PAID ?? 0,
-      pending: Math.max(0, (statusMap.PENDING ?? 0) - overdueCount),
-      partiallyPaid: statusMap.PARTIALLY_PAID ?? 0,
-      overdue: overdueCount,
-      canceled: statusMap.CANCELED ?? 0,
-    };
+    const installmentStatus = computeInstallmentStatusCounts(statusMap, overdueInstallments);
 
     // --- Aging: utilizar os mesmos saldos corrigidos do KPI ---
     const agingBuckets = ["0-30 dias", "31-60 dias", "61-90 dias", "90+ dias"];
@@ -378,6 +386,7 @@ async overview(query: DashboardQuery) {
     // --- Upcoming due (next 10) ---
     const upcomingDueRows = await prisma.$queryRaw<{
       clientId: string;
+      loanId: string;
       clientName: string;
       loanCode: string;
       installmentNumber: number;
@@ -387,6 +396,7 @@ async overview(query: DashboardQuery) {
     }[]>`
       SELECT
         l."clientId" AS "clientId",
+        l."id" AS "loanId",
         c."name" AS "clientName",
         l."code" AS "loanCode",
         i."number" AS "installmentNumber",
@@ -402,6 +412,7 @@ async overview(query: DashboardQuery) {
       LIMIT 10`;
     const upcomingDue = upcomingDueRows.map((r) => ({
       clientId: r.clientId,
+      loanId: r.loanId,
       clientName: r.clientName,
       loanCode: r.loanCode,
       installmentNumber: r.installmentNumber,
@@ -413,6 +424,7 @@ async overview(query: DashboardQuery) {
     // --- Overdue list (top 10) ---
     const overdueList = overdueInstallments.slice(0, 10).map((row) => ({
       clientId: row.clientId,
+      loanId: row.loanId,
       clientName: row.clientName,
       loanCode: row.loanCode,
       installmentNumber: row.installmentNumber,
@@ -424,7 +436,7 @@ async overview(query: DashboardQuery) {
 
     // --- Receipts series (daily for period) ---
     const receiptsRows = await prisma.$queryRaw<{ day: Date | string; received: string }[]>`
-      SELECT (DATE_TRUNC('day', "receivedAt" AT TIME ZONE ${APP_TIME_ZONE}))::date AS day,
+      SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS day,
              COALESCE(SUM("receivedAmount"), 0) AS received
       FROM "Payment"
       WHERE "status" = 'REGISTERED'
@@ -439,25 +451,25 @@ async overview(query: DashboardQuery) {
     // --- Financial flow (monthly for period) ---
     const [grantedRows, receivedMonthlyRows, predictedRows] = await Promise.all([
       prisma.$queryRaw<{ month: string; granted: string }[]>`
-        SELECT TO_CHAR("grantedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+        SELECT TO_CHAR("grantedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS month,
                COALESCE(SUM("principalAmount"), 0) AS granted
         FROM "Loan"
         WHERE "status" NOT IN ('DRAFT', 'CANCELED')
           AND "grantedAt" >= ${periodFrom} AND "grantedAt" <= ${periodTo}
         GROUP BY 1 ORDER BY 1`,
       prisma.$queryRaw<{ month: string; received: string }[]>`
-        SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+        SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, ${flowPattern}) AS month,
                COALESCE(SUM("receivedAmount"), 0) AS received
         FROM "Payment"
         WHERE "status" = 'REGISTERED'
           AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}
         GROUP BY 1 ORDER BY 1`,
       prisma.$queryRaw<{ month: string; predicted: string }[]>`
-        SELECT TO_CHAR("dueDate" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
-               COALESCE(SUM("totalDue"), 0) AS predicted
+        SELECT TO_CHAR("dueDate" AT TIME ZONE 'UTC', ${flowPattern}) AS month,
+               COALESCE(SUM("remainingBalance"), 0) AS predicted
         FROM "Installment"
         WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
-          AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}
+          AND "dueDate" >= ${duePeriod.from} AND "dueDate" < ${duePeriod.to}
         GROUP BY 1 ORDER BY 1`,
     ]);
 
@@ -491,6 +503,9 @@ async overview(query: DashboardQuery) {
       openPortfolio,
       receivedTotal: totalReceived,
       interestReceived: Number(interestRows[0]?.sum ?? 0),
+      receivedPrincipal: Number(receivedBreakdownRows[0]?.principal ?? 0),
+      receivedInterest: Number(receivedBreakdownRows[0]?.interest ?? 0),
+      receivedCharges: Number(receivedBreakdownRows[0]?.charges ?? 0),
       overdueAmount: totalOverdue,
       activeLoans: Number(activeLoansRows[0]?.c ?? 0),
       activeClients: Number(activeClientsRows[0]?.c ?? 0),
@@ -499,6 +514,8 @@ async overview(query: DashboardQuery) {
       overdueInstallments: overdueInstallments.length,
       delinquencyRate: Math.round(delinquencyRate * 100) / 100,
       receivableInPeriod: Number(receivableThisMonthRows[0]?.sum ?? 0),
+      overdueClients: new Set(overdueInstallments.map((i) => i.clientId)).size,
+      lateChargesOutstanding: totalLateCharges,
       // Charts
       receiptsSeries,
       financialFlow,
@@ -531,6 +548,7 @@ async overview(query: DashboardQuery) {
     const [rows, countRows] = await Promise.all([
       prisma.$queryRaw<{
         clientId: string;
+        loanId: string;
         clientName: string;
         loanCode: string;
         installmentNumber: number;
@@ -540,6 +558,7 @@ async overview(query: DashboardQuery) {
       }[]>`
         SELECT
           l."clientId" AS "clientId",
+          l."id" AS "loanId",
           c."name" AS "clientName",
           l."code" AS "loanCode",
           i."number" AS "installmentNumber",
@@ -563,6 +582,7 @@ async overview(query: DashboardQuery) {
     const total = Number(countRows[0]?.total ?? 0);
     const items = rows.map((r) => ({
       clientId: r.clientId,
+      loanId: r.loanId,
       clientName: r.clientName,
       loanCode: r.loanCode,
       installmentNumber: r.installmentNumber,

@@ -354,6 +354,25 @@ export const loansService = {
       );
     }
 
+    // Impedir cancelamento/renegociação com obrigações ou pagamentos existentes
+    // sem um processo próprio de liquidação/estorno/renegociação.
+    if (input.status === "CANCELED" || input.status === "RENEGOTIATED") {
+      const hasPayments = loan.payments.some((payment) => payment.status === "REGISTERED");
+      const hasOutstanding = loan.installments.some((inst) => inst.status !== "PAID" && inst.status !== "CANCELED" && Number(inst.remainingBalance) > 0.005);
+      if (hasPayments || hasOutstanding) {
+        throw new ConflictError("Há pagamentos ou parcelas em aberto: regularize o contrato antes de cancelar ou renegociar", "LOAN_HAS_FINANCIAL_HISTORY");
+      }
+    }
+    if (input.status === "LIQUIDATED" && loan.installments.some((inst) => inst.status !== "PAID" && inst.status !== "CANCELED")) {
+      throw new ConflictError("Não é possível liquidar empréstimo com parcelas abertas", "LOAN_HAS_OPEN_INSTALLMENTS");
+    }
+
+    // Os modelos variável e de pagamento único ainda não geram obrigações neste serviço.
+    // Sem parcelas, uma ativação criaria principal emprestado fora da carteira a receber.
+    if (input.status === "ACTIVE" && loan.installments.length === 0 && loan.billingModel !== "FIXED_INSTALLMENTS") {
+      throw new ConflictError("Modelo de cobrança ainda não possui geração de parcelas; utilize parcelas fixas até que este modelo seja implementado", "LOAN_BILLING_MODEL_NOT_IMPLEMENTED");
+    }
+
     // ao ativar, gera as parcelas se ainda não existirem e o modelo for parcelas fixas
     if (input.status === "ACTIVE" && loan.installments.length === 0 && loan.billingModel === "FIXED_INSTALLMENTS") {
       await this.generateInstallments(loan, actorId);

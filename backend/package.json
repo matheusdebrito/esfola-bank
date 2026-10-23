@@ -39,7 +39,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.34.0",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",

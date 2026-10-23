@@ -105,6 +105,9 @@ export const paymentsService = {
         throw new ConflictError("A parcela não pertence a este empréstimo", "INSTALLMENT_LOAN_MISMATCH");
       }
       const remaining = Number(inst.remainingBalance);
+      if (inst.status === "PAID" || inst.status === "CANCELED") {
+        throw new ConflictError("Não é possível alocar em parcela paga ou cancelada", "INSTALLMENT_NOT_OPEN");
+      }
       // encargos de mora não compõem o saldo contratual da parcela
       const balanceImpact = alloc.principalAmount + alloc.interestAmount;
       if (balanceImpact > remaining + 0.005) {

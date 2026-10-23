@@ -113,6 +113,15 @@ export const financialPolicyService = {
       throw new NotFoundError("Política financeira não encontrada", "FINANCIAL_POLICY_NOT_FOUND");
     }
 
+    // Regras de mora de contratos existentes não podem mudar retroativamente.
+    const financialFields = ["interestRatePercent", "lateFeeAmount", "dailyLateInterestPercent", "roundingMode", "toleranceDays"] as const;
+    if (financialFields.some((field) => input[field] !== undefined && String(input[field]) !== String(policy[field]))) {
+      const existingLoans = await prisma.loan.count({ where: { policyId: id } });
+      if (existingLoans > 0) {
+        throw new ConflictError("Política vinculada a empréstimos: crie uma nova política para alterar os juros ou encargos", "POLICY_IN_USE_IMMUTABLE");
+      }
+    }
+
     const updateData: any = {};
     if (input.name !== undefined) updateData.name = input.name;
     if (input.description !== undefined) updateData.description = input.description;

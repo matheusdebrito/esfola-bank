@@ -3,6 +3,7 @@ import { disconnectPrisma, getPrisma } from "../../config/prisma";
 import { cleanupDb } from "../../test/helpers";
 import type { LoanCreateInput } from "./loans.schema";
 import { loansService } from "./loans.service";
+import { financialPolicyService } from "../financial-policy/financial-policy.service";
 
 let prisma: any;
 let userId = "";
@@ -171,4 +172,22 @@ describe("loans (integração — requer banco de teste)", () => {
       loansService.remove("00000000-0000-0000-0000-000000000000", userId),
     ).rejects.toMatchObject({ statusCode: 404, code: "LOAN_NOT_FOUND" });
   });
+  it("impede cancelar um contrato ativo com parcelas abertas", async () => {
+    if (!userId) return;
+    const active = await loansService.create(loanInput(), userId);
+    await loansService.changeStatus(active.id, { status: "ACTIVE", justification: "Liberação" }, userId);
+    await expect(
+      loansService.changeStatus(active.id, { status: "CANCELED", justification: "Teste" }, userId),
+    ).rejects.toMatchObject({ statusCode: 409, code: "LOAN_HAS_FINANCIAL_HISTORY" });
+  });
+
+  it("preserva multa e juros de políticas vinculadas a empréstimos", async () => {
+    if (!userId) return;
+    await expect(
+      financialPolicyService.update(policyId, { dailyLateInterestPercent: 0.5 }, userId),
+    ).rejects.toMatchObject({ statusCode: 409, code: "POLICY_IN_USE_IMMUTABLE" });
+    const policy = await prisma.financialPolicy.findUnique({ where: { id: policyId } });
+    expect(Number(policy.dailyLateInterestPercent)).toBe(0.33);
+  });
+
 });
