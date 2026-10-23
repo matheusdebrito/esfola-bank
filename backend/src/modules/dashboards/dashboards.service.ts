@@ -31,6 +31,13 @@ function periodFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql
 
 const OPEN_CONDITION = Prisma.sql`"status" IN ('PENDING', 'PARTIALLY_PAID')`;
 
+function periodAndFilter(dateColumn: DateColumn, query: DashboardQuery): Prisma.Sql {
+  const conditions: Prisma.Sql[] = [];
+  if (query.from) conditions.push(Prisma.sql`${Prisma.raw(`"${dateColumn}"`)} >= ${new Date(query.from)}`);
+  if (query.to) conditions.push(Prisma.sql`${Prisma.raw(`"${dateColumn}"`)} <= ${new Date(query.to)}`);
+  return conditions.length ? Prisma.sql`AND ${Prisma.join(conditions, " AND ")}` : Prisma.empty;
+}
+
 function dueDatePeriod(query: DashboardQuery, fallbackFrom: Date, fallbackTo: Date) {
   const localDate = (value: Date) => value.toLocaleDateString("en-CA", { timeZone: APP_TIME_ZONE });
   const from = calendarDateToUtc(localDate(query.from ? new Date(query.from) : fallbackFrom));
@@ -46,7 +53,7 @@ export const dashboardsService = {
     if (cached) return cached;
 
     const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
 
     const [
       totalGrantedRows,
@@ -100,7 +107,7 @@ export const dashboardsService = {
     const cached = await cacheService.get<any>(cacheKey);
     if (cached) return cached;
 
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
     const rows = await prisma.$queryRaw<{ day: Date | string; received: string }[]>`
       SELECT (DATE_TRUNC('day', "receivedAt" AT TIME ZONE ${APP_TIME_ZONE}))::date AS day,
              COALESCE(SUM("receivedAmount"), 0) AS received
@@ -142,7 +149,7 @@ export const dashboardsService = {
 
   async operational(query: DashboardQuery) {
     const grantedWhere = periodFilter("grantedAt", query);
-    const receivedWhere = periodFilter("receivedAt", query);
+    const receivedWhere = periodAndFilter("receivedAt", query);
 
     const [loansCreatedRows, paymentsRegisteredRows, byUserRows] = await Promise.all([
       prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Loan" ${grantedWhere}`,
