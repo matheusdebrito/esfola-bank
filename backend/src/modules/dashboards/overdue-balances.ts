@@ -116,3 +116,22 @@ export function summarizeOverdueInstallments(
   );
   return { totalOverdue: overdueCents / 100, totalLateCharges: chargesCents / 100 };
 }
+
+/**
+ * Contagens mutuamente exclusivas: uma parcela aberta vencida aparece só em "overdue",
+ * independentemente de já ter recebido um pagamento parcial.
+ */
+export function computeInstallmentStatusCounts(
+  storedCounts: Readonly<Record<string, number>>,
+  overdue: readonly Pick<OverdueInstallmentSnapshot, "status">[],
+) {
+  const overduePending = overdue.filter((row) => row.status === "PENDING").length;
+  const overduePartial = overdue.filter((row) => row.status === "PARTIALLY_PAID").length;
+  return {
+    paid: storedCounts.PAID ?? 0,
+    pending: Math.max(0, (storedCounts.PENDING ?? 0) - overduePending),
+    partiallyPaid: Math.max(0, (storedCounts.PARTIALLY_PAID ?? 0) - overduePartial),
+    overdue: overduePending + overduePartial,
+    canceled: storedCounts.CANCELED ?? 0,
+  };
+}
