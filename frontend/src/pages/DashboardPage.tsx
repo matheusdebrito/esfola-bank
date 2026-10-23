@@ -1,56 +1,132 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { SimpleTable } from "@/components/SimpleTable";
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
 } from "recharts";
+import {
+  DollarSign,
+  Wallet,
+  TrendingUp,
+  Percent,
+  Users,
+  Briefcase,
+  CalendarClock,
+  AlertTriangle,
+  Clock,
+  Target,
+  RefreshCw,
+} from "lucide-react";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { brl, percent } from "@/lib/format";
-import type { DashboardMonthly } from "@/types/api";
+import { brl, percent, dateBr } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import type { DashboardOverview } from "@/types/api";
 
-const COLORS = ["#2563eb", "#059669", "#d97706", "#be123c", "#7c3aed"];
+const COLORS = ["#2563eb", "#059669", "#d97706", "#be123c", "#7c3aed", "#0891b2"];
 
-type Executive = {
-  totalGranted?: number;
-  activeLoans?: number;
-  activeClients?: number;
-  overdueAmount?: number;
-  receivedTotal?: number;
-  interestReceived?: number;
-  overdueInstallments?: number;
-  openPortfolio?: number;
-  delinquencyRate?: number;
-};
+const PERIOD_OPTIONS = [
+  { value: "today", label: "Hoje" },
+  { value: "7days", label: "Últimos 7 dias" },
+  { value: "month", label: "Mês atual" },
+  { value: "year", label: "Ano atual" },
+  { value: "custom", label: "Personalizado" },
+];
 
-type FinancialSeriesItem = { day: string; received: number };
+function periodToRange(period: string, customFrom: string, customTo: string): { from: string; to: string } {
+  const now = new Date();
+  const tz = "America/Sao_Paulo";
+  const fmt = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
+  const today = fmt(now);
 
-function MetricCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
+  switch (period) {
+    case "today":
+      return { from: `${today}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+    case "7days": {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 6);
+      return { from: `${fmt(d)}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+    }
+    case "month": {
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const first = new Date(y, m, 1);
+      const last = new Date(y, m + 1, 0);
+      return { from: `${fmt(first)}T00:00:00.000Z`, to: `${fmt(last)}T23:59:59.999Z` };
+    }
+    case "year": {
+      const y = now.getFullYear();
+      return { from: `${y}-01-01T00:00:00.000Z`, to: `${y}-12-31T23:59:59.999Z` };
+    }
+    case "custom":
+      return {
+        from: customFrom ? new Date(customFrom).toISOString() : `${today}T00:00:00.000Z`,
+        to: customTo ? new Date(customTo).toISOString() : `${today}T23:59:59.999Z`,
+      };
+    default:
+      return { from: `${today}T00:00:00.000Z`, to: `${today}T23:59:59.999Z` };
+  }
+}
+
+function KpiCard({
+  title,
+  value,
+  icon: Icon,
+  sub,
+  variant = "default",
+}: {
+  title: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  sub?: string;
+  variant?: "default" | "danger" | "success";
+}) {
+  const colorClass =
+    variant === "danger"
+      ? "text-destructive"
+      : variant === "success"
+        ? "text-emerald-600"
+        : "text-primary";
   return (
     <Card className="rounded-xl border border-border p-4">
-      <CardContent className="pt-2">
-        <p className="text-xs text-muted-foreground">{title}</p>
-        <div className="mt-1 flex items-baseline gap-1">
-          <span className="text-2xl font-bold">{value}</span>
-          {sub ? <span className="text-xs text-muted-foreground">{sub}</span> : null}
+      <CardContent className="flex items-start gap-3 pt-2">
+        <div className={`rounded-lg bg-muted p-2 ${colorClass}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs text-muted-foreground">{title}</p>
+          <p className="mt-0.5 truncate text-lg font-bold">{value}</p>
+          {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function formatMonth(value: string) {
+  const [y, m] = value.split("-");
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  return months[Number(m) - 1] ? `${months[Number(m) - 1]}/${y.slice(2)}` : value;
 }
 
 function formatDay(value: string) {
@@ -59,181 +135,239 @@ function formatDay(value: string) {
 }
 
 export default function DashboardPage() {
-  const { data: executive, isLoading: execLoading } = useQuery({
-    queryKey: QUERY_KEYS.dashboards.executive,
+  const [period, setPeriod] = useState("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const range = useMemo(() => periodToRange(period, customFrom, customTo), [period, customFrom, customTo]);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["dashboards", "overview", range.from, range.to],
     queryFn: async () => {
-      const res = await api.get("/api/v1/dashboards/executive");
-      return (res.data?.data ?? {}) as Executive;
+      const params = new URLSearchParams({ from: range.from, to: range.to });
+      const res = await api.get(`/api/v1/dashboards/overview?${params.toString()}`);
+      return (res.data?.data ?? {}) as DashboardOverview;
     },
   });
 
-  const { data: financial, isLoading: finLoading } = useQuery({
-    queryKey: QUERY_KEYS.dashboards.financial,
-    queryFn: async () => {
-      const res = await api.get("/api/v1/dashboards/financial");
-      return (res.data?.data ?? { series: [] }) as { series: FinancialSeriesItem[] };
-    },
-  });
+  const d = data ?? ({} as DashboardOverview);
 
-  const { data: monthly } = useQuery({
-    queryKey: QUERY_KEYS.dashboards.monthly,
-    queryFn: async () => {
-      const res = await api.get("/api/v1/dashboards/monthly");
-      return (res.data?.data ?? {}) as DashboardMonthly;
-    },
-  });
+  const financialFlow = Array.isArray(d.financialFlow) ? d.financialFlow : [];
+  const receiptsSeries = Array.isArray(d.receiptsSeries) ? d.receiptsSeries : [];
+  const portfolioComposition = Array.isArray(d.portfolioComposition) ? d.portfolioComposition : [];
+  const aging = Array.isArray(d.aging) ? d.aging : [];
+  const topClients = Array.isArray(d.topClients) ? d.topClients : [];
+  const upcomingDue = Array.isArray(d.upcomingDue) ? d.upcomingDue : [];
+  const overdueList = Array.isArray(d.overdueList) ? d.overdueList : [];
+  const installmentStatus = d.installmentStatus ?? { paid: 0, pending: 0, partiallyPaid: 0, overdue: 0, canceled: 0 };
 
-  const series = Array.isArray(financial?.series) ? financial.series : [];
-  const openPortfolio = Number(executive?.openPortfolio ?? 0);
-  const overdueAmount = Number(executive?.overdueAmount ?? 0);
+  const statusPieData = [
+    { name: "Pagas", value: installmentStatus.paid },
+    { name: "Pendentes", value: installmentStatus.pending },
+    { name: "Parciais", value: installmentStatus.partiallyPaid },
+    { name: "Atrasadas", value: installmentStatus.overdue },
+    { name: "Canceladas", value: installmentStatus.canceled },
+  ].filter((x) => x.value > 0);
 
-  const portfolioComposition = [
-    { name: "Em aberto", value: Math.max(0, openPortfolio - overdueAmount) },
-    { name: "Vencido", value: overdueAmount },
-    { name: "Juros recebidos", value: Number(executive?.interestReceived ?? 0) },
-  ];
+  const statusColors = ["#059669", "#2563eb", "#d97706", "#be123c", "#6b7280"];
 
-  const monthInstallments = [
-    { name: "A receber", value: monthly?.dueInstallmentsThisMonth ?? 0 },
-    { name: "Em atraso", value: monthly?.overdueInstallmentsThisMonth ?? 0 },
-    { name: "Em dia", value: monthly?.currentInstallmentsThisMonth ?? 0 },
-  ];
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold">Dashboard</h2>
+        <Card className="rounded-xl border border-border p-6">
+          <CardContent className="text-center">
+            <p className="text-destructive">{getApiErrorMessage(error, "Erro ao carregar dashboard")}</p>
+            <Button className="mt-4" onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Dashboard Executivo</h2>
-        <p className="text-sm text-muted-foreground">Indicadores gerenciais em tempo real.</p>
+      {/* Header + Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">Indicadores gerenciais em tempo real.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={period} onValueChange={setPeriod}>
+            {PERIOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </Select>
+          {period === "custom" ? (
+            <>
+              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-36" />
+              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-36" />
+            </>
+          ) : null}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <MetricCard title="Total emprestado" value={brl(monthly?.totalGranted ?? executive?.totalGranted ?? 0)} />
-        <MetricCard title="Carteira em aberto" value={brl(openPortfolio)} />
-        <MetricCard title="Recebido" value={brl(executive?.receivedTotal ?? 0)} />
-        <MetricCard title="Juros recebidos" value={brl(executive?.interestReceived ?? 0)} />
-        <MetricCard title="A receber neste mês" value={brl(monthly?.receivableThisMonth ?? 0)} />
-        <MetricCard title="Parcelas a receber" value={String(monthly?.dueInstallmentsThisMonth ?? 0)} />
-        <MetricCard title="Parcelas em atraso" value={String(executive?.overdueInstallments ?? 0)} />
-        <MetricCard title="Valor vencido" value={brl(overdueAmount)} />
-        <MetricCard title="Inadimplência" value={percent(executive?.delinquencyRate ?? 0)} />
-        <MetricCard title="Clientes ativos" value={String(executive?.activeClients ?? 0)} />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <KpiCard title="Capital emprestado" value={brl(d.totalGranted ?? 0)} icon={DollarSign} sub="no período" />
+        <KpiCard title="Carteira em aberto" value={brl(d.openPortfolio ?? 0)} icon={Wallet} />
+        <KpiCard title="Recebido" value={brl(d.receivedTotal ?? 0)} icon={TrendingUp} sub="no período" variant="success" />
+        <KpiCard title="Juros recebidos" value={brl(d.interestReceived ?? 0)} icon={Percent} sub="no período" />
+        <KpiCard title="Valor vencido" value={brl(d.overdueAmount ?? 0)} icon={AlertTriangle} variant="danger" />
+        <KpiCard title="Inadimplência" value={percent(d.delinquencyRate ?? 0)} icon={Target} variant={d.delinquencyRate && d.delinquencyRate > 10 ? "danger" : "default"} />
+        <KpiCard title="Empréstimos ativos" value={String(d.activeLoans ?? 0)} icon={Briefcase} />
+        <KpiCard title="Clientes ativos" value={String(d.activeClients ?? 0)} icon={Users} />
+        <KpiCard title="Vencem hoje" value={String(d.dueToday ?? 0)} icon={CalendarClock} />
+        <KpiCard title="Vencem em 7 dias" value={String(d.dueNext7Days ?? 0)} icon={Clock} />
+        <KpiCard title="Parcelas atrasadas" value={String(d.overdueInstallments ?? 0)} icon={AlertTriangle} variant="danger" />
+        <KpiCard title="A receber no mês" value={brl(d.receivableThisMonth ?? 0)} icon={DollarSign} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="rounded-xl border border-border p-4 lg:col-span-2">
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Financial Flow */}
+        <Card className="rounded-xl border border-border p-4">
           <CardHeader>
-            <CardTitle>Recebimentos por dia</CardTitle>
+            <CardTitle className="text-base">Fluxo financeiro</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            {finLoading ? (
-              <p className="text-muted-foreground">Carregando...</p>
-            ) : series.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Nenhum recebimento registrado no período.
-              </p>
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : financialFlow.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período.</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="receivedGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={financialFlow} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 12 }} />
-                  <YAxis tickFormatter={(value) => brl(Number(value))} tick={{ fontSize: 12 }} width={90} />
-                  <Tooltip
-                    labelFormatter={(value) => `Dia ${formatDay(String(value))}`}
-                    formatter={(value) => [brl(Number(value)), "Recebido"]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="received"
-                    name="Recebido"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    fill="url(#receivedGradient)"
-                  />
-                </AreaChart>
+                  <XAxis dataKey="month" tickFormatter={formatMonth} tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
+                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={formatMonth} />
+                  <Legend />
+                  <Bar dataKey="granted" name="Capital emprestado" fill="#2563eb" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="received" name="Recebido" fill="#059669" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="predicted" name="Previsto" fill="#d97706" radius={[2, 2, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
+        {/* Receipts Evolution */}
         <Card className="rounded-xl border border-border p-4">
           <CardHeader>
-            <CardTitle>Composição da carteira</CardTitle>
+            <CardTitle className="text-base">Evolução dos recebimentos</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            {execLoading ? (
-              <p className="text-muted-foreground">Carregando...</p>
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : receiptsSeries.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Sem recebimentos no período.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={receiptsSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="receivedGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#059669" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#059669" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={80} />
+                  <Tooltip formatter={(v) => brl(Number(v))} labelFormatter={formatDay} />
+                  <Area type="monotone" dataKey="received" name="Recebido" stroke="#059669" strokeWidth={2} fill="url(#receivedGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Portfolio Composition */}
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Composição da carteira</CardTitle>
+          </CardHeader>
+          <CardContent className="h-64">
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : portfolioComposition.every((x) => x.value === 0) ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={portfolioComposition}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    labelLine={false}
-                  >
-                    {portfolioComposition.map((entry, index) => (
-                      <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+                  <Pie data={portfolioComposition} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false}>
+                    {portfolioComposition.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => brl(Number(value))} />
+                  <Tooltip formatter={(v) => brl(Number(v))} />
                   <Legend verticalAlign="bottom" height={24} />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Installment Status */}
         <Card className="rounded-xl border border-border p-4">
           <CardHeader>
-            <CardTitle>Inadimplência</CardTitle>
+            <CardTitle className="text-base">Status das parcelas</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Parcelas vencidas</span>
-              <Badge variant="destructive">{executive?.overdueInstallments ?? 0}</Badge>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Valor vencido</span>
-              <span className="font-medium">{brl(overdueAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Taxa de inadimplência</span>
-              <span className="font-medium">{percent(executive?.delinquencyRate ?? 0)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Juros recebidos</span>
-              <span className="font-medium">{brl(executive?.interestReceived ?? 0)}</span>
-            </div>
+          <CardContent className="h-64">
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : statusPieData.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={statusPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false}>
+                    {statusPieData.map((_, i) => (
+                      <Cell key={i} fill={statusColors[i % statusColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={24} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border border-border p-4 lg:col-span-2">
+        {/* Aging */}
+        <Card className="rounded-xl border border-border p-4">
           <CardHeader>
-            <CardTitle>Parcelas deste mês</CardTitle>
+            <CardTitle className="text-base">Aging da inadimplência</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
-            {!monthly ? (
-              <p className="text-muted-foreground">Carregando...</p>
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : aging.every((a) => a.amount === 0) ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Sem inadimplência.</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthInstallments} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={aging} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={40} />
-                  <Tooltip formatter={(value) => [`${value} parcela(s)`, "Quantidade"]} />
-                  <Bar dataKey="value" name="Parcelas" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v) => brl(Number(v))} tick={{ fontSize: 11 }} width={70} />
+                  <Tooltip formatter={(v) => brl(Number(v))} />
+                  <Bar dataKey="amount" name="Valor" fill="#be123c" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -241,7 +375,80 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {execLoading || finLoading ? <p className="text-muted-foreground">Carregando dados...</p> : null}
+      {/* Top Clients */}
+      {topClients.length > 0 ? (
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Top 5 clientes por saldo em aberto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SimpleTable
+              columns={[
+                { key: "clientName", label: "Cliente" },
+                { key: "outstandingBalance", label: "Saldo em aberto", render: (v) => brl(Number(v)) },
+                { key: "overdueAmount", label: "Valor vencido", render: (v) => brl(Number(v)) },
+              ]}
+              data={topClients}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Operational Tables */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Upcoming Due */}
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Próximos vencimentos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingDue.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
+            ) : (
+              <SimpleTable
+                columns={[
+                  { key: "clientName", label: "Cliente" },
+                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
+                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
+                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
+                  { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                ]}
+                data={upcomingDue}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Overdue List */}
+        <Card className="rounded-xl border border-border p-4">
+          <CardHeader>
+            <CardTitle className="text-base">Parcelas em atraso</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overdueList.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma parcela em atraso.</p>
+            ) : (
+              <SimpleTable
+                columns={[
+                  { key: "clientName", label: "Cliente" },
+                  { key: "loanCode", label: "Empréstimo", render: (v) => <span className="font-mono text-xs">{v}</span> },
+                  { key: "installmentNumber", label: "Parcela", render: (v) => `#${v}` },
+                  { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
+                  { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
+                  { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
+                ]}
+                data={overdueList}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -161,6 +161,44 @@ export type DashboardMonthly = {
   monthEnd: string;
 };
 
+export type DashboardOverview = {
+  totalGranted: number;
+  openPortfolio: number;
+  receivedTotal: number;
+  interestReceived: number;
+  overdueAmount: number;
+  activeLoans: number;
+  activeClients: number;
+  dueToday: number;
+  dueNext7Days: number;
+  overdueInstallments: number;
+  delinquencyRate: number;
+  receivableThisMonth: number;
+  receiptsSeries: { day: string; received: number }[];
+  financialFlow: { month: string; granted: number; received: number; predicted: number }[];
+  portfolioComposition: { name: string; value: number }[];
+  installmentStatus: { paid: number; pending: number; partiallyPaid: number; overdue: number; canceled: number };
+  aging: { bucket: string; amount: number; count: number }[];
+  topClients: { clientId: string; clientName: string; outstandingBalance: number; overdueAmount: number }[];
+  upcomingDue: {
+    clientId: string;
+    clientName: string;
+    loanCode: string;
+    installmentNumber: number;
+    dueDate: string;
+    remainingBalance: number;
+    status: string;
+  }[];
+  overdueList: {
+    clientId: string;
+    clientName: string;
+    loanCode: string;
+    installmentNumber: number;
+    dueDate: string;
+    remainingBalance: number;
+    daysOverdue: number;
+  }[];
+};
 export type Paged<T> = {
   items: T[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };

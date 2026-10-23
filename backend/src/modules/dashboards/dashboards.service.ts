@@ -259,41 +259,318 @@ export const dashboardsService = {
     return result;
   },
 
-  async overview() {
-    const cacheKey = cacheService.buildKey("dashboards", "overview");
+async overview(query: DashboardQuery) {
+    const cacheKey = cacheService.buildKey("dashboards", "overview", JSON.stringify(query));
     const cached = await cacheService.get<any>(cacheKey);
     if (cached) return cached;
 
-    // Busca executiva resumida (dados totais, sem filtros de período)
-    const exec = await this.executive({});
+    const from = query.from ? new Date(query.from) : null;
+    const to = query.to ? new Date(query.to) : null;
 
-    // Série temporal dos últimos 12 meses (últimos 12 meses completos)
-    const series = [];
+    // Default period: current month
     const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(now);
-      date.setMonth(date.getMonth() - i);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const ms = calendarDateToUtc(`${year}-${String(month).padStart(2, "0")}-01`);
-      const nextMs = calendarDateToUtc(`${year}-${String((month % 12) + 1).padStart(2, "0")}-01`);
-      const rows = await prisma.$queryRaw<{ received: string }[]>`
-        SELECT COALESCE(SUM("receivedAmount"), 0) AS received
+    const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    const defaultTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const periodFrom = from ?? defaultFrom;
+    const periodTo = to ?? defaultTo;
+
+    const todayStr = todayCalendarDate();
+    const todayStart = calendarDateToUtc(todayStr);
+    const next7Days = calendarDateToUtc(
+      new Date(Date.parse(`${todayStr}T00:00:00.000Z`) + 7 * 86_400_000).toISOString().slice(0, 10),
+    );
+    const monthStart = calendarDateToUtc(`${todayStr.slice(0, 7)}-01`);
+    const nextMonth = todayStr.slice(5, 7) === "12"
+      ? `${Number(todayStr.slice(0, 4)) + 1}-01-01`
+      : `${todayStr.slice(0, 4)}-${String(Number(todayStr.slice(5, 7)) + 1).padStart(2, "0")}-01`;
+    const monthEnd = calendarDateToUtc(nextMonth);
+
+    const grantedWhere = periodFilter("grantedAt", query);
+    const receivedWhere = periodFilter("receivedAt", query);
+
+    // --- KPIs ---
+    const [
+      totalGrantedRows,
+      activeLoansRows,
+      activeClientsRows,
+      overdueRows,
+      overdueCountRows,
+      receivedRows,
+      interestRows,
+      portfolioRows,
+      dueTodayRows,
+      dueNext7Rows,
+      receivableThisMonthRows,
+      installmentStatusRows,
+    ] = await Promise.all([
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM("principalAmount"), 0) AS sum FROM "Loan"
+        WHERE "status" NOT IN ('DRAFT', 'CANCELED')
+          AND "grantedAt" >= ${periodFrom} AND "grantedAt" <= ${periodTo}`,
+      prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Loan" WHERE "status" = 'ACTIVE'`,
+      prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Client" WHERE "active" = true`,
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
+      prisma.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) AS c FROM "Installment" WHERE ${OVERDUE_CONDITION}`,
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM("receivedAmount"), 0) AS sum FROM "Payment"
+        WHERE "status" = 'REGISTERED' AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}`,
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM(a."interestAmount"), 0) AS sum
+        FROM "PaymentAllocation" a
+        JOIN "Payment" p ON a."paymentId" = p."id"
+        WHERE p."status" = 'REGISTERED' AND p."receivedAt" >= ${periodFrom} AND p."receivedAt" <= ${periodTo}`,
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM("remainingBalance"), 0) AS sum FROM "Installment" WHERE ${OPEN_CONDITION}`,
+      prisma.$queryRaw<{ c: bigint }[]>`
+        SELECT COUNT(*) AS c FROM "Installment"
+        WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
+          AND ("dueDate" AT TIME ZONE 'UTC')::date = (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date`,
+      prisma.$queryRaw<{ c: bigint }[]>`
+        SELECT COUNT(*) AS c FROM "Installment"
+        WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
+          AND ("dueDate" AT TIME ZONE 'UTC')::date >= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
+          AND ("dueDate" AT TIME ZONE 'UTC')::date <= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date + INTERVAL '7 days'`,
+      prisma.$queryRaw<{ sum: string }[]>`
+        SELECT COALESCE(SUM("totalDue"), 0) AS sum FROM "Installment"
+        WHERE ${OPEN_CONDITION} AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}`,
+      prisma.$queryRaw<{ status: string; c: bigint }[]>`
+        SELECT "status", COUNT(*) AS c FROM "Installment" GROUP BY "status"`,
+    ]);
+
+    const totalOverdue = Number(overdueRows[0]?.sum ?? 0);
+    const totalReceived = Number(receivedRows[0]?.sum ?? 0);
+    const openPortfolio = Number(portfolioRows[0]?.sum ?? 0);
+    const delinquencyRate = openPortfolio > 0 ? (totalOverdue / openPortfolio) * 100 : 0;
+
+    // installmentStatus (mutually exclusive)
+    const statusMap: Record<string, number> = { PAID: 0, PENDING: 0, PARTIALLY_PAID: 0, CANCELED: 0 };
+    for (const row of installmentStatusRows) {
+      statusMap[row.status] = Number(row.c);
+    }
+    const overdueCount = Number(overdueCountRows[0]?.c ?? 0);
+    const installmentStatus = {
+      paid: statusMap.PAID ?? 0,
+      pending: Math.max(0, (statusMap.PENDING ?? 0) - overdueCount),
+      partiallyPaid: statusMap.PARTIALLY_PAID ?? 0,
+      overdue: overdueCount,
+      canceled: statusMap.CANCELED ?? 0,
+    };
+
+    // --- Aging ---
+    const agingRows = await prisma.$queryRaw<{ bucket: string; amount: string; count: bigint }[]>`
+      SELECT
+        CASE
+          WHEN days_overdue <= 30 THEN '0-30 dias'
+          WHEN days_overdue <= 60 THEN '31-60 dias'
+          WHEN days_overdue <= 90 THEN '61-90 dias'
+          ELSE '90+ dias'
+        END AS bucket,
+        COALESCE(SUM("remainingBalance"), 0) AS amount,
+        COUNT(*) AS count
+      FROM (
+        SELECT "remainingBalance",
+          (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date - ("dueDate" AT TIME ZONE 'UTC')::date AS days_overdue
+        FROM "Installment"
+        WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
+          AND ("dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
+      ) sub
+      GROUP BY 1
+      ORDER BY 1`;
+    const agingBuckets = ["0-30 dias", "31-60 dias", "61-90 dias", "90+ dias"];
+    const agingMap = new Map(agingRows.map((r) => [r.bucket, { amount: Number(r.amount), count: Number(r.count) }]));
+    const aging = agingBuckets.map((b) => ({
+      bucket: b,
+      amount: agingMap.get(b)?.amount ?? 0,
+      count: agingMap.get(b)?.count ?? 0,
+    }));
+
+    // --- Top clients ---
+    const topClientsRows = await prisma.$queryRaw<{
+      clientId: string;
+      clientName: string;
+      outstandingBalance: string;
+      overdueAmount: string;
+    }[]>`
+      SELECT
+        l."clientId" AS "clientId",
+        c."name" AS "clientName",
+        COALESCE(SUM(i."remainingBalance"), 0) AS "outstandingBalance",
+        COALESCE(SUM(CASE WHEN (i."dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date THEN i."remainingBalance" ELSE 0 END), 0) AS "overdueAmount"
+      FROM "Installment" i
+      JOIN "Loan" l ON i."loanId" = l."id"
+      JOIN "Client" c ON l."clientId" = c."id"
+      WHERE i."status" IN ('PENDING', 'PARTIALLY_PAID')
+      GROUP BY l."clientId", c."name"
+      ORDER BY "outstandingBalance" DESC
+      LIMIT 5`;
+    const topClients = topClientsRows.map((r) => ({
+      clientId: r.clientId,
+      clientName: r.clientName,
+      outstandingBalance: Number(r.outstandingBalance),
+      overdueAmount: Number(r.overdueAmount),
+    }));
+
+    // --- Upcoming due (next 10) ---
+    const upcomingDueRows = await prisma.$queryRaw<{
+      clientId: string;
+      clientName: string;
+      loanCode: string;
+      installmentNumber: number;
+      dueDate: Date;
+      remainingBalance: string;
+      status: string;
+    }[]>`
+      SELECT
+        l."clientId" AS "clientId",
+        c."name" AS "clientName",
+        l."code" AS "loanCode",
+        i."number" AS "installmentNumber",
+        i."dueDate" AS "dueDate",
+        i."remainingBalance" AS "remainingBalance",
+        i."status" AS "status"
+      FROM "Installment" i
+      JOIN "Loan" l ON i."loanId" = l."id"
+      JOIN "Client" c ON l."clientId" = c."id"
+      WHERE i."status" IN ('PENDING', 'PARTIALLY_PAID')
+        AND (i."dueDate" AT TIME ZONE 'UTC')::date >= (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
+      ORDER BY i."dueDate" ASC
+      LIMIT 10`;
+    const upcomingDue = upcomingDueRows.map((r) => ({
+      clientId: r.clientId,
+      clientName: r.clientName,
+      loanCode: r.loanCode,
+      installmentNumber: r.installmentNumber,
+      dueDate: r.dueDate,
+      remainingBalance: Number(r.remainingBalance),
+      status: r.status,
+    }));
+
+    // --- Overdue list (top 10) ---
+    const overdueListRows = await prisma.$queryRaw<{
+      clientId: string;
+      clientName: string;
+      loanCode: string;
+      installmentNumber: number;
+      dueDate: Date;
+      remainingBalance: string;
+    }[]>`
+      SELECT
+        l."clientId" AS "clientId",
+        c."name" AS "clientName",
+        l."code" AS "loanCode",
+        i."number" AS "installmentNumber",
+        i."dueDate" AS "dueDate",
+        i."remainingBalance" AS "remainingBalance"
+      FROM "Installment" i
+      JOIN "Loan" l ON i."loanId" = l."id"
+      JOIN "Client" c ON l."clientId" = c."id"
+      WHERE i."status" IN ('PENDING', 'PARTIALLY_PAID')
+        AND (i."dueDate" AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE ${APP_TIME_ZONE})::date
+      ORDER BY i."dueDate" ASC
+      LIMIT 10`;
+    const overdueList = overdueListRows.map((r) => ({
+      clientId: r.clientId,
+      clientName: r.clientName,
+      loanCode: r.loanCode,
+      installmentNumber: r.installmentNumber,
+      dueDate: r.dueDate,
+      remainingBalance: Number(r.remainingBalance),
+      daysOverdue: Math.max(0, Math.floor(
+        (Date.now() - new Date(r.dueDate).getTime()) / 86_400_000,
+      )),
+    }));
+
+    // --- Receipts series (daily for period) ---
+    const receiptsRows = await prisma.$queryRaw<{ day: Date | string; received: string }[]>`
+      SELECT (DATE_TRUNC('day', "receivedAt" AT TIME ZONE ${APP_TIME_ZONE}))::date AS day,
+             COALESCE(SUM("receivedAmount"), 0) AS received
+      FROM "Payment"
+      WHERE "status" = 'REGISTERED'
+        AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}
+      GROUP BY 1
+      ORDER BY 1`;
+    const receiptsSeries = receiptsRows.map((r) => ({
+      day: r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day).slice(0, 10),
+      received: Number(r.received),
+    }));
+
+    // --- Financial flow (monthly for period) ---
+    const [grantedRows, receivedMonthlyRows, predictedRows] = await Promise.all([
+      prisma.$queryRaw<{ month: string; granted: string }[]>`
+        SELECT TO_CHAR("grantedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+               COALESCE(SUM("principalAmount"), 0) AS granted
+        FROM "Loan"
+        WHERE "status" NOT IN ('DRAFT', 'CANCELED')
+          AND "grantedAt" >= ${periodFrom} AND "grantedAt" <= ${periodTo}
+        GROUP BY 1 ORDER BY 1`,
+      prisma.$queryRaw<{ month: string; received: string }[]>`
+        SELECT TO_CHAR("receivedAt" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+               COALESCE(SUM("receivedAmount"), 0) AS received
         FROM "Payment"
         WHERE "status" = 'REGISTERED'
-          AND "receivedAt" >= ${ms}
-          AND "receivedAt" < ${nextMs}
-      `;
-      series.push({
-        month: `${year}-${String(month).padStart(2, "0")}`,
-        received: Number(rows[0]?.received ?? 0),
-      });
-    }
+          AND "receivedAt" >= ${periodFrom} AND "receivedAt" <= ${periodTo}
+        GROUP BY 1 ORDER BY 1`,
+      prisma.$queryRaw<{ month: string; predicted: string }[]>`
+        SELECT TO_CHAR("dueDate" AT TIME ZONE ${APP_TIME_ZONE}, 'YYYY-MM') AS month,
+               COALESCE(SUM("totalDue"), 0) AS predicted
+        FROM "Installment"
+        WHERE "status" IN ('PENDING', 'PARTIALLY_PAID')
+          AND "dueDate" >= ${periodFrom} AND "dueDate" <= ${periodTo}
+        GROUP BY 1 ORDER BY 1`,
+    ]);
+
+    const monthSet = new Set<string>();
+    grantedRows.forEach((r) => monthSet.add(r.month));
+    receivedMonthlyRows.forEach((r) => monthSet.add(r.month));
+    predictedRows.forEach((r) => monthSet.add(r.month));
+
+    const grantedMap = new Map(grantedRows.map((r) => [r.month, Number(r.granted)]));
+    const receivedMap = new Map(receivedMonthlyRows.map((r) => [r.month, Number(r.received)]));
+    const predictedMap = new Map(predictedRows.map((r) => [r.month, Number(r.predicted)]));
+
+    const financialFlow = Array.from(monthSet)
+      .sort()
+      .map((m) => ({
+        month: m,
+        granted: grantedMap.get(m) ?? 0,
+        received: receivedMap.get(m) ?? 0,
+        predicted: predictedMap.get(m) ?? 0,
+      }));
+
+    // --- Portfolio composition ---
+    const portfolioComposition = [
+      { name: "Em aberto", value: Math.max(0, openPortfolio - totalOverdue) },
+      { name: "Vencido", value: totalOverdue },
+    ];
 
     const result = {
-      ...exec,
-      series,
+      // KPIs
+      totalGranted: Number(totalGrantedRows[0]?.sum ?? 0),
+      openPortfolio,
+      receivedTotal: totalReceived,
+      interestReceived: Number(interestRows[0]?.sum ?? 0),
+      overdueAmount: totalOverdue,
+      activeLoans: Number(activeLoansRows[0]?.c ?? 0),
+      activeClients: Number(activeClientsRows[0]?.c ?? 0),
+      dueToday: Number(dueTodayRows[0]?.c ?? 0),
+      dueNext7Days: Number(dueNext7Rows[0]?.c ?? 0),
+      overdueInstallments: Number(overdueCountRows[0]?.c ?? 0),
+      delinquencyRate: Math.round(delinquencyRate * 100) / 100,
+      receivableThisMonth: Number(receivableThisMonthRows[0]?.sum ?? 0),
+      // Charts
+      receiptsSeries,
+      financialFlow,
+      portfolioComposition,
+      installmentStatus,
+      aging,
+      // Tables
+      topClients,
+      upcomingDue,
+      overdueList,
     };
+
     await cacheService.set(cacheKey, result, DASHBOARD_TTL);
     return result;
   },

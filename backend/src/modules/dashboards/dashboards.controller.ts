@@ -35,8 +35,9 @@ export const dashboardsController = {
     const data = await dashboardsService.monthly();
     res.json({ error: false, data });
   }),
-  overview: asyncHandler(async (_req: Request, res: Response) => {
-    const data = await dashboardsService.overview();
+  overview: asyncHandler(async (req: Request, res: Response) => {
+    const query = dashboardQuerySchema.parse(req.query) as DashboardQuery;
+    const data = await dashboardsService.overview(query);
     res.json({ error: false, data });
   }),
 };
