@@ -109,7 +109,7 @@ export const financeService = {
   async register(input: FinanceEntryCreateInput, actorId: string, ip?: string, userAgent?: string) {
     return prisma.$transaction(async (tx) => {
       // Serializa lançamentos e estornos concorrentes; nenhuma saída pode usar o mesmo saldo duas vezes.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(60192623)`;
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(60192623)::text AS locked`;
       const book = await tx.cashBook.findUnique({ where: { id: 1 } });
       if (!book) throw new ConflictError("Informe o saldo inicial antes do primeiro lançamento", "CASH_BOOK_NOT_INITIALIZED");
       if (input.idempotencyKey) {
@@ -165,7 +165,7 @@ export const financeService = {
 
   async reverse(id: string, input: FinanceReverseInput, actorId: string, ip?: string, userAgent?: string) {
     return prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(60192623)`;
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(60192623)::text AS locked`;
       const entry = await tx.financeEntry.findUnique({ where: { id } });
       if (!entry) throw new NotFoundError("Lançamento não encontrado", "FINANCE_ENTRY_NOT_FOUND");
       if (entry.reversedAt) throw new ConflictError("Lançamento já estornado", "FINANCE_ENTRY_ALREADY_REVERSED");
