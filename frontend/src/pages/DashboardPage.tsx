@@ -254,7 +254,7 @@ export default function DashboardPage() {
         <Badge variant="secondary">Parcelas atrasadas: {d.overdueInstallments ?? 0}</Badge>
         <Badge variant="secondary">Clientes em atraso: {d.overdueClients ?? 0}</Badge>
         <Badge variant="secondary">Vencem hoje: {d.dueToday ?? 0}</Badge>
-        <Badge variant="secondary">Vencem em 7 dias: {d.dueNext7Days ?? 0}</Badge>
+        <Badge variant="secondary">Vencem nos próximos 7 dias (com hoje): {d.dueNext7Days ?? 0}</Badge>
         <Badge variant="secondary">Juros recebidos: {brl(d.receivedInterest ?? 0)}</Badge>
         <Badge variant="secondary">Multas e mora recebidas: {brl(d.receivedCharges ?? 0)}</Badge>
       </div>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                   { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
                   { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
                   { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
-                  { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Cobrar</Button> },
+                  { key: "actions", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => navigate(`/loans/${row.loanId}`)}>Abrir</Button> },
                 ]}
                 data={overdueList}
               />
