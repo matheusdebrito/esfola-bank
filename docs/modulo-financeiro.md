@@ -13,6 +13,7 @@
 - **Desembolso**: saída no valor total do principal de um contrato ativo criado após a abertura, sem pagamentos e sem desembolso anterior. É operação patrimonial, não despesa.
 - **Recebimento**: vem de `Payment` já existente; não criar lançamento manual de recebimento.
 - Lançamentos manuais são imutáveis; uma correção se faz por **estorno justificado** e, se necessário, registro de novo movimento. O usuário e a justificativa ficam no histórico de auditoria.
+- Um desembolso estornado pode ser corrigido por um novo lançamento para o mesmo contrato, mas o banco impede a existência de dois desembolsos ativos para um mesmo empréstimo.
 - Saídas são recusadas se excederem o saldo disponível apurado na transação. Pode haver saldo negativo após um estorno tardio de pagamento; nesse caso, é necessária conciliação.
 
 ## Fórmulas
