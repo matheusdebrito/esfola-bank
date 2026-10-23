@@ -328,7 +328,6 @@ export default function DashboardPage() {
                   { key: "updatedRemainingBalance", label: "Em aberto atualizado", render: (v) => brl(Number(v)) },
                   { key: "lateCharges", label: "Multa e juros", render: (v) => brl(Number(v)) },
                   { key: "daysOverdue", label: "Dias", render: (v) => <span className="text-destructive font-medium">{v}</span> },
-                  { key: "loanCode", label: "", render: (_v, row) => <Button size="sm" variant="outline" onClick={() => window.location.assign(`/loans?search=${encodeURIComponent(row.loanCode)}`)}>Abrir</Button> },
                 ]}
                 data={overdueList}
               />
