@@ -108,12 +108,6 @@ export const paymentsService = {
       if (inst.status === "PAID" || inst.status === "CANCELED") {
         throw new ConflictError("Não é possível alocar em parcela paga ou cancelada", "INSTALLMENT_NOT_OPEN");
       }
-      const previouslyAllocatedInterest = Number(inst.interestDue) - Math.max(0, Number(inst.interestDue) - Math.max(0, Number(inst.totalDue) - remaining));
-      const maxRemainingInterest = Math.max(0, Number(inst.interestDue) - previouslyAllocatedInterest);
-      const maxRemainingPrincipal = Math.max(0, remaining - maxRemainingInterest);
-      if (alloc.interestAmount > maxRemainingInterest + 0.005 || alloc.principalAmount > maxRemainingPrincipal + 0.005) {
-        throw new ConflictError("Alocação de principal ou juros não corresponde ao saldo da parcela", "INVALID_PAYMENT_COMPONENTS");
-      }
       // encargos de mora não compõem o saldo contratual da parcela
       const balanceImpact = alloc.principalAmount + alloc.interestAmount;
       if (balanceImpact > remaining + 0.005) {
