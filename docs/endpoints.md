@@ -71,6 +71,17 @@ O atraso é **calculado** (vencimento anterior à data de hoje): `overdueOnly=tr
 `status=OVERDUE` retornam as parcelas `PENDING`/`PARTIALLY_PAID` vencidas. Cada item inclui
 `status` (persistido), `effectiveStatus` (ex.: `OVERDUE`), `isOverdue` e `daysOverdue`.
 
+Valores monetários retornados na listagem e no detalhe:
+- `totalDue`: valor **original/contratual** da parcela, que não muda com o atraso;
+- `updatedTotalDue`: valor original + encargos de atraso já pagos + encargos atuais a cobrar;
+- `paidAmount`: valor recebido, incluindo eventuais encargos pagos;
+- `remainingBalance`: saldo **contratual** restante (não inclui mora);
+- `updatedRemainingBalance`: saldo contratual restante + multa e juros atuais;
+- `lateCharges`: detalhamento dos encargos atuais, calculados na leitura.
+
+Os totais atualizados são apenas valores de resposta: não sobrescrevem os campos
+contratuais no banco de dados e variam conforme a data de consulta.
+
 ## Pagamentos
 
 | Método | Endpoint | Descrição | Permissão |
