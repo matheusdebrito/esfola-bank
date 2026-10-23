@@ -113,6 +113,20 @@ describe("livro-caixa e resultado financeiro (PostgreSQL)", () => {
     expect(reversed?.reversed).toBe(true);
   });
 
+  it("permite novo desembolso após estorno auditado, sem dois ativos", async () => {
+    const old = await prisma.financeEntry.findFirst({ where: { loanId, reversedAt: null } });
+    expect(old).not.toBeNull();
+    await financeService.reverse(old!.id, { justification: "Desembolso inicial informado incorretamente" }, userId);
+    expect((await financeService.overview()).availableBalance).toBe(2000);
+    expect((await financeService.eligibleLoans()).some((loan) => loan.id === loanId)).toBe(true);
+    const replacement = await financeService.register({
+      type: "DISBURSEMENT", amount: 100, loanId, description: "Desembolso confirmado após estorno",
+    }, userId);
+    expect(replacement.id).not.toBe(old!.id);
+    expect(await prisma.financeEntry.count({ where: { loanId, reversedAt: null } })).toBe(1);
+    expect((await financeService.overview()).availableBalance).toBe(1900);
+  });
+
   it("separa aportes, despesas e retiradas do resultado e impede saldo negativo", async () => {
     await financeService.register({ type: "CONTRIBUTION", amount: 300, description: "Aporte dos sócios" }, userId);
     await financeService.register({ type: "EXPENSE", amount: 45, description: "Taxa administrativa" }, userId);
