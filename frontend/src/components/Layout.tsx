@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
+  { name: "Relatórios", href: "/reports", icon: "📊" },
   { name: "Clientes", href: "/clients", icon: "💳" },
   { name: "Empréstimos", href: "/loans", icon: "💰" },
   { name: "Pagamentos", href: "/payments", icon: "💸" },
@@ -47,7 +48,7 @@ export default function Layout() {
             className="flex items-center justify-center overflow-hidden"
           >
             <img
-              src="/logo.webp"
+              src="/logo-nova.jpg"
               alt={APP_NAME}
               className="h-14 w-auto max-w-full object-contain lg:h-16"
             />
