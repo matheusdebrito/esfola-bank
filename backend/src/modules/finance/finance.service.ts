@@ -94,7 +94,7 @@ export const financeService = {
       where: {
         createdAt: { gte: book.startedAt },
         status: "ACTIVE",
-        disbursement: null,
+        disbursements: { none: { reversedAt: null } },
         payments: { none: { status: "REGISTERED" } },
       },
       orderBy: { createdAt: "desc" },
@@ -134,7 +134,7 @@ export const financeService = {
         if (toCents(loan.principalAmount) !== toCents(input.amount)) {
           throw new ValidationError("O desembolso deve corresponder exatamente ao principal contratado", "DISBURSEMENT_AMOUNT_MISMATCH");
         }
-        const existing = await tx.financeEntry.findUnique({ where: { loanId: loan.id } });
+        const existing = await tx.financeEntry.findFirst({ where: { loanId: loan.id, reversedAt: null } });
         if (existing) throw new ConflictError("Este empréstimo já possui desembolso registrado", "LOAN_ALREADY_DISBURSED");
       }
 
