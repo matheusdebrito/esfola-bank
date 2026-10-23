@@ -406,6 +406,7 @@ async overview(query: DashboardQuery) {
     }[]>`
       SELECT
         l."clientId" AS "clientId",
+        l."id" AS "loanId",
         c."name" AS "clientName",
         l."code" AS "loanCode",
         i."number" AS "installmentNumber",
@@ -432,6 +433,7 @@ async overview(query: DashboardQuery) {
     // --- Overdue list (top 10) ---
     const overdueList = overdueInstallments.slice(0, 10).map((row) => ({
       clientId: row.clientId,
+      loanId: row.loanId,
       clientName: row.clientName,
       loanCode: row.loanCode,
       installmentNumber: row.installmentNumber,
@@ -555,6 +557,7 @@ async overview(query: DashboardQuery) {
     const [rows, countRows] = await Promise.all([
       prisma.$queryRaw<{
         clientId: string;
+        loanId: string;
         clientName: string;
         loanCode: string;
         installmentNumber: number;
