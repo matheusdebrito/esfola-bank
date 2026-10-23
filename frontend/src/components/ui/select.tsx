@@ -20,12 +20,19 @@ export function Select({ className, children, value, onValueChange, ...props }: 
   );
 }
 
-export function SelectTrigger({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props}>{children}</select>;
+/**
+ * Wrapper de `select` nativo.
+ *
+ * A composição `SelectTrigger`/`SelectContent`/`SelectItem` é mantida apenas
+ * por compatibilidade: o gatilho e o valor não devem renderizar elementos
+ * dentro de um `<select>` (HTML inválido). Os itens viram `<option>`.
+ */
+export function SelectTrigger(_props: { children?: React.ReactNode }): null {
+  return null;
 }
 
-export function SelectValue({ children, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
-  return <span {...props}>{children}</span>;
+export function SelectValue(_props: { children?: React.ReactNode }): null {
+  return null;
 }
 
 export function SelectContent({ children }: { children: React.ReactNode }) {

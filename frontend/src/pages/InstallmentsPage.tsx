@@ -1,29 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { installmentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
-
-const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const dateBr = (value: string) =>
-  new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-
-const statusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    PENDING: "Pendente",
-    PARTIALLY_PAID: "Parcialmente paga",
-    PAID: "Paga",
-    OVERDUE: "Atrasada",
-    CANCELED: "Cancelada",
-  };
-  return labels[status] ?? status;
-};
 
 function buildWhatsappUrl(installment: Installment) {
   const digits = (installment.clientPhone ?? "").replace(/\D/g, "");
@@ -62,20 +53,21 @@ export function InstallmentActions({ installment }: { installment: Installment }
   const payMutation = useMutation({
     mutationFn: () => api.post(`/api/v1/installments/${installment.id}/pay`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(installment.loanId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       const lateCharges = installment.lateCharges?.totalLateCharges ?? 0;
       toast({
         title: "Parcela baixada como paga",
         description: lateCharges > 0 ? `Encargos de atraso cobrados: ${brl(lateCharges)}` : undefined,
       });
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || "Não foi possível baixar a parcela",
+        description: getApiErrorMessage(err, "Não foi possível baixar a parcela"),
         variant: "destructive",
       }),
   });
@@ -97,55 +89,67 @@ export function InstallmentActions({ installment }: { installment: Installment }
   };
 
   return (
-    <details className="relative">
-      <summary
-        className="list-none cursor-pointer rounded-md px-2 py-1 text-center text-lg leading-none hover:bg-muted [&::-webkit-details-marker]:hidden"
-        title="Opções"
+    <div className="flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={handleCharge}>
+        Cobrar
+      </Button>
+      <Button
+        size="sm"
+        variant="default"
+        disabled={closed || payMutation.isPending}
+        onClick={() => payMutation.mutate()}
       >
-        ...
-      </summary>
-      <div className="absolute right-0 z-50 mt-1 w-36 rounded-md border bg-background p-1 shadow-md">
-        <button
-          type="button"
-          onClick={handleCharge}
-          className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-        >
-          Cobrar
-        </button>
-        <button
-          type="button"
-          disabled={closed || payMutation.isPending}
-          onClick={(event) => {
-            closeMenu(event);
-            payMutation.mutate();
-          }}
-          className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-        >
-          {payMutation.isPending ? "Baixando..." : "Pago"}
-        </button>
-      </div>
-    </details>
+        {payMutation.isPending ? "Baixando..." : "Pagar"}
+      </Button>
+    </div>
   );
 }
 
 export default function InstallmentsPage() {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["installments"],
+    queryKey: [...QUERY_KEYS.installments.list, debouncedSearch, page],
     queryFn: async () => {
-      const res = await api.get("/api/v1/installments?page=1&pageSize=20");
-      return res.data.data.items as Installment[];
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await api.get(`/api/v1/installments?${params.toString()}`);
+      return res.data.data as { items: Installment[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
+
+  const installments = data?.items ?? [];
+  const meta = data?.meta;
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Parcelas</h2>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por empréstimo, cliente..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+      </div>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
       <Card>
         <CardHeader><CardTitle>Obrigações</CardTitle></CardHeader>
         <CardContent>
           <SimpleTable
             columns={[
+              {
+                key: "loanCode",
+                label: "Empréstimo",
+                render: (v) => <span className="font-mono text-xs">{v ?? "-"}</span>,
+              },
               { key: "clientName", label: "Cliente", render: (v) => v ?? "-" },
               { key: "number", label: "Nº" },
               { key: "dueDate", label: "Vencimento", render: (v) => dateBr(v) },
@@ -153,13 +157,14 @@ export default function InstallmentsPage() {
               { key: "paidAmount", label: "Pago", render: (v) => brl(Number(v)) },
               { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
               { key: "lateCharges", label: "Encargos", render: (v) => brl(Number((v as any)?.totalLateCharges ?? 0)) },
-              { key: "status", label: "Status", render: (v) => statusLabel(v) },
+              { key: "status", label: "Status", render: (_v, row) => installmentStatusLabel(row.effectiveStatus ?? row.status) },
               { key: "daysOverdue", label: "Atraso (dias)" },
               { key: "actions", label: "", render: (_v, row) => <InstallmentActions installment={row} /> },
             ]}
-            data={isLoading ? [] : data ?? []}
+            data={isLoading ? [] : installments}
             mobileActionsAlign="center"
           />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
     </div>

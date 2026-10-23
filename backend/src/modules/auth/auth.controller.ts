@@ -40,7 +40,7 @@ export const authController = {
       res.status(401).json({ error: true, message: "Não autenticado", statusCode: 401, code: "NOT_AUTHENTICATED" });
       return;
     }
-    res.json({ error: false, data: { user } });
+    res.json({ error: false, data: { user: authService.mapUser(user) } });
   }),
 };
 

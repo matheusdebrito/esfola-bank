@@ -14,17 +14,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr, percent, toDateInputValue } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { loanStatusLabel, periodicityLabel } from "@/lib/status-labels";
+import { useAuth } from "@/hooks/useAuth";
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
-  ACTIVE: "Ativo",
-  LIQUIDATED: "Liquidado",
-  CANCELED: "Cancelado",
-  RENEGOTIATED: "Renegociado",
-};
+function todayOffset(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toDateInputValue(d);
+}
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function nextMonthSameDay() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return toDateInputValue(d);
 }
 
 const EMPTY_FORM = {
@@ -33,7 +39,7 @@ const EMPTY_FORM = {
   principalAmount: "",
   periodicity: "MONTHLY",
   installmentCount: "12",
-  startDate: today(),
+  startDate: nextMonthSameDay(),
   contractTerms: "",
   observations: "",
   activate: true,
@@ -42,17 +48,34 @@ const EMPTY_FORM = {
 export default function LoansPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
+
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [settled, setSettled] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["loans"],
+    queryKey: [...QUERY_KEYS.loans.list, debouncedSearch, page, settled],
     queryFn: async () => {
-      const res = await api.get("/api/v1/loans?page=1&pageSize=20");
-      return res.data.data.items;
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (settled) params.set("settled", settled);
+      const res = await api.get(`/api/v1/loans?${params.toString()}`);
+      return res.data.data as { items: any[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
 
+  const loans = data?.items ?? [];
+  const meta = data?.meta;
+
   const { data: clients } = useQuery({
-    queryKey: ["clients", "options"],
+    queryKey: QUERY_KEYS.clients.options,
     queryFn: async () => {
       const res = await api.get("/api/v1/clients?page=1&pageSize=100");
       return res.data.data.items;
@@ -60,7 +83,8 @@ export default function LoansPage() {
   });
 
   const { data: policies } = useQuery({
-    queryKey: ["policies", "options"],
+    queryKey: QUERY_KEYS.policies.options,
+    refetchOnMount: "always",
     queryFn: async () => {
       const res = await api.get("/api/v1/financial-policies?page=1&pageSize=100");
       return (res.data.data.items as any[]).filter((p) => p.active);
@@ -106,11 +130,11 @@ export default function LoansPage() {
       return { loan, activationError };
     },
     onSuccess: ({ activationError }) => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setOpen(false);
-      setForm({ ...EMPTY_FORM, startDate: today() });
+      setForm({ ...EMPTY_FORM, startDate: nextMonthSameDay() });
       if (activationError) {
         toast({ title: "Empréstimo salvo como rascunho", description: activationError, variant: "destructive" });
       } else if (form.activate) {
@@ -119,15 +143,52 @@ export default function LoansPage() {
         toast({ title: "Empréstimo criado como rascunho" });
       }
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || "Não foi possível criar o empréstimo",
+        description: getApiErrorMessage(err, "Não foi possível criar o empréstimo"),
         variant: "destructive",
       }),
   });
 
+  useEffect(() => {
+    setForm((prev) => {
+      if (prev.periodicity === "DAILY") {
+        return { ...prev, startDate: todayOffset(1) };
+      }
+      return { ...prev, startDate: nextMonthSameDay() };
+    });
+  }, [form.periodicity]);
+
   const noPolicies = policies !== undefined && policies.length === 0;
+
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/v1/loans/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
+      setDeleteTarget(null);
+      toast({ title: "Empréstimo excluído" });
+    },
+    onError: (err: unknown) =>
+      toast({
+        title: "Erro ao excluir",
+        description: getApiErrorMessage(err, "Não foi possível excluir o empréstimo"),
+        variant: "destructive",
+      }),
+  });
+
+  const canDelete = (row: any) =>
+    can("loans:delete") &&
+    (row.status === "DRAFT" || row.status === "CANCELED") &&
+    Number(row.installmentCount ?? 0) === 0 &&
+    Number(row.paymentCount ?? 0) === 0;
 
   const selectedPolicy =
     (policies ?? []).find((p: any) => p.id === form.policyId) ??
@@ -144,29 +205,61 @@ export default function LoansPage() {
         <Button onClick={() => setOpen(true)}>Novo empréstimo</Button>
       </div>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por código, cliente, CPF..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+        <Select value={settled} onValueChange={(v) => { setSettled(v); setPage(1); }}>
+          <option value="">Todos</option>
+          <option value="false">Não quitados</option>
+          <option value="true">Quitados</option>
+        </Select>
+      </div>
+
       <Card>
         <CardHeader><CardTitle>Carteira</CardTitle></CardHeader>
         <CardContent>
           <SimpleTable
             columns={[
+              {
+                key: "code",
+                label: "Identificador",
+                render: (v) => <span className="font-mono text-xs">{v}</span>,
+              },
               { key: "clientName", label: "Cliente" },
-              { key: "principalAmount", label: "Principal", render: (v) => `R$ ${Number(v).toFixed(2)}` },
-              { key: "interestRatePercent", label: "Juros flat (%)", render: (v) => Number(v).toFixed(2) },
-              { key: "periodicity", label: "Periodicidade", render: (v) => (v === "DAILY" ? "Diário" : "Mensal") },
+              { key: "principalAmount", label: "Principal", render: (v) => brl(Number(v)) },
+              { key: "interestRatePercent", label: "Juros flat (%)", render: (v) => percent(v) },
+              { key: "periodicity", label: "Periodicidade", render: (v) => periodicityLabel(v) },
               { key: "policyName", label: "Política" },
               { key: "installmentCount", label: "Parcelas" },
-              { key: "status", label: "Status", render: (v) => STATUS_LABELS[v] ?? v },
-              { key: "createdAt", label: "Criado em", render: (v) => (v ? new Date(v).toLocaleDateString("pt-BR") : "") },
+              { key: "status", label: "Status", render: (v) => loanStatusLabel(v) },
+              { key: "createdAt", label: "Criado em", render: (v) => dateBr(v) },
               {
                 key: "actions",
                 label: "",
                 render: (_v, row: any) => (
-                  <Button size="sm" onClick={() => navigate(`/loans/${row.id}`)}>Detalhes</Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => navigate(`/loans/${row.id}`)}>Detalhes</Button>
+                    {canDelete(row) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() => setDeleteTarget(row)}
+                      >
+                        Excluir
+                      </Button>
+                    ) : null}
+                  </div>
                 ),
               },
             ]}
-            data={isLoading ? [] : data}
+            data={isLoading ? [] : loans}
           />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
 
@@ -246,6 +339,37 @@ export default function LoansPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(value) => (!value ? setDeleteTarget(null) : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir empréstimo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 p-1 text-sm">
+            <p>
+              Excluir definitivamente o empréstimo{" "}
+              <strong className="font-mono">{deleteTarget?.code}</strong> de{" "}
+              <strong>{deleteTarget?.clientName ?? "cliente"}</strong>?
+            </p>
+            <p className="text-muted-foreground">
+              Esta ação é irreversível e só é permitida para rascunhos ou empréstimos cancelados sem
+              parcelas e sem pagamentos.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir definitivamente"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -17,6 +17,7 @@ Perfis: ADMIN, MANAGER, OPERATOR, AUDITOR.
 | loans:create | ✓ | ✓ | ✓ | |
 | loans:update | ✓ | ✓ | | |
 | loans:status_change | ✓ | ✓ | | |
+| loans:delete | ✓ | | | |
 | installments:read | ✓ | ✓ | ✓ | ✓ |
 | payments:read | ✓ | ✓ | ✓ | ✓ |
 | payments:register | ✓ | ✓ | ✓ | |
@@ -34,4 +35,7 @@ Perfis: ADMIN, MANAGER, OPERATOR, AUDITOR.
 - Esconder botão no frontend não é autorização; todas as rotas protegidas validam permissão no backend.
 - Auditor tem leitura, sem poder modificar registros financeiros auditados.
 - Operador não pode desativar clientes nem reverter pagamentos.
+- Exclusão definitiva de empréstimo é restrita ao ADMIN e só é permitida para empréstimos
+  `DRAFT` ou `CANCELED`, sem parcelas e sem pagamentos (caso contrário a API responde
+  `409 LOAN_HAS_FINANCIAL_HISTORY`).
 - A trilha de auditoria é protegida contra alteração/exclusão por usuários comuns.

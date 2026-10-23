@@ -40,18 +40,22 @@ export default function Layout() {
           menuOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible",
         )}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3">
-          <NavLink to="/dashboard" aria-label={APP_NAME} className="min-w-0">
+        <div className="flex shrink-0 flex-col items-center gap-2 border-b border-border px-3 py-3">
+          <NavLink
+            to="/dashboard"
+            aria-label={APP_NAME}
+            className="flex items-center justify-center overflow-hidden"
+          >
             <img
               src="/logo.webp"
               alt={APP_NAME}
-              className="h-20 w-auto max-w-full object-contain lg:h-24"
+              className="h-14 w-auto max-w-full object-contain lg:h-16"
             />
           </NavLink>
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
-            className="rounded-md p-2 text-muted-foreground hover:bg-accent lg:hidden"
+            className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent lg:hidden"
             aria-label="Fechar menu"
           >
             ✕
@@ -88,16 +92,15 @@ export default function Layout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/50 px-4 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/50 px-4 sm:px-6 lg:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="rounded-md p-2 text-muted-foreground hover:bg-accent lg:hidden"
+            className="rounded-md p-2 text-muted-foreground hover:bg-accent"
             aria-label="Abrir menu"
           >
             ☰
           </button>
-          <h1 className="truncate text-base font-semibold sm:text-sm">{currentTitle(location.pathname)}</h1>
         </header>
         <main className="flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
           <Outlet />
@@ -105,9 +108,4 @@ export default function Layout() {
       </div>
     </div>
   );
-}
-
-function currentTitle(path: string) {
-  const m = NAV.find((n) => path === n.href || path.startsWith(n.href + "/"));
-  return m ? m.name : APP_NAME;
 }

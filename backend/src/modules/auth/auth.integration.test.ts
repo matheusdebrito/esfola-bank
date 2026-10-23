@@ -43,6 +43,8 @@ describe("auth (integração — requer banco de teste)", () => {
       .expect(200);
     expect(res.body.error).toBe(false);
     expect(res.body.data.user.email).toBe("admin@emprestimo.test");
+    expect(Array.isArray(res.body.data.user.permissions)).toBe(true);
+    expect(res.body.data.user.permissions).toContain("loans:read");
     const cookies = cookieArray(res);
     const accessCookie = cookies.find((c) => c.startsWith("access_token="));
     expect(accessCookie).toBeDefined();
@@ -63,7 +65,8 @@ describe("auth (integração — requer banco de teste)", () => {
       .post("/api/v1/auth/login")
       .send({ email: "admin@emprestimo.test", password: "Admin1234" });
     const cookies = cookieArray(login);
-    await request(app).get("/api/v1/auth/me").set("Cookie", cookies).expect(200);
+    const me = await request(app).get("/api/v1/auth/me").set("Cookie", cookies).expect(200);
+    expect(me.body.data.user.permissions).toContain("loans:read");
     await request(app).get("/api/v1/auth/me").expect(401);
   });
 });

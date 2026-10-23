@@ -43,6 +43,7 @@ export type ClientDocument = {
 
 export type Loan = {
   id: string;
+  code: string;
   clientId: string;
   clientName: string | null;
   clientCpfMasked: string | null;
@@ -69,6 +70,7 @@ export type Loan = {
 export type Installment = {
   id: string;
   loanId: string;
+  loanCode: string | null;
   clientId: string;
   clientName: string | null;
   clientPhone: string | null;
@@ -81,6 +83,8 @@ export type Installment = {
   paidAmount: number;
   remainingBalance: number;
   status: string;
+  effectiveStatus: string;
+  isOverdue: boolean;
   daysOverdue: number;
   lateCharges: {
     lateFee: number;
@@ -93,6 +97,7 @@ export type Payment = {
   id: string;
   clientId: string;
   loanId: string;
+  loanCode?: string | null;
   userId: string;
   userName: string | null;
   receivedAmount: number;
@@ -103,6 +108,13 @@ export type Payment = {
   observations: string | null;
   idempotencyKey: string | null;
   status: string;
+  allocations?: {
+    id: string;
+    installmentId: string;
+    installmentNumber: number;
+    allocatedAmount: number;
+  }[];
+  installments?: number[];
   createdAt: string;
   updatedAt: string;
 };

@@ -77,6 +77,7 @@ enum AuditAction {
   UPDATE
   DELETE
   LOGIN
+  LOGIN_FAILED
   LOGOUT
   PASSWORD_CHANGE
   PASSWORD_RESET
@@ -190,6 +191,7 @@ model ClientDocument {
 
 model Loan {
   id               String            @id @default(uuid()) @db.Uuid
+  code             String            @unique
   clientId         String            @db.Uuid
   userId           String            @db.Uuid
   policyId         String?           @db.Uuid
@@ -217,6 +219,13 @@ model Loan {
   @@index([userId])
   @@index([status])
   @@index([grantedAt])
+}
+
+/// Contador sequencial do identificador do empréstimo, reiniciado por ano.
+model LoanCodeCounter {
+  year      Int      @id
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 model Installment {

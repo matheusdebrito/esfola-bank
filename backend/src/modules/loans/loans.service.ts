@@ -1,14 +1,17 @@
 import { prisma } from "../../config/prisma";
 import { auditService } from "../audit/audit.service";
+import { Prisma } from "@prisma/client";
 import {
   calculateInstallments,
   type InstallmentCalculation,
 } from "../financial-policy/calculation.service";
-import {
-  ConflictError,
-  NotFoundError,
-} from "../../shared/errors";
+import { ConflictError, NotFoundError } from "../../shared/errors";
 import { invalidationService } from "../../shared/cache/invalidation.service";
+import {
+  daysBetweenCalendarDates,
+  toCalendarDate,
+  todayCalendarDate,
+} from "../../shared/calendar";
 import type {
   LoanCreateInput,
   LoanUpdateInput,
@@ -18,6 +21,7 @@ import type {
 
 type SafeLoan = {
   id: string;
+  code: string;
   clientId: string;
   clientName: string | null;
   clientCpfMasked: string | null;
@@ -43,6 +47,7 @@ type SafeLoan = {
 function toSafeLoan(loan: any): SafeLoan {
   return {
     id: loan.id,
+    code: loan.code,
     clientId: loan.clientId,
     clientName: loan.client?.name ?? null,
     clientCpfMasked: loan.client ? maskCpf(loan.client.cpf) : null,
@@ -80,6 +85,23 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   RENEGOTIATED: [],
 };
 
+/**
+ * Gera o próximo identificador do empréstimo de forma atômica.
+ * Formato: EMP-<ano>-<sequencial de 4 dígitos>, reiniciado por ano.
+ */
+async function nextLoanCode(tx: Prisma.TransactionClient, year: number): Promise<string> {
+  const rows = await tx.$queryRaw<{ lastValue: number }[]>`
+    INSERT INTO "LoanCodeCounter" ("year", "lastValue", "updatedAt")
+    VALUES (${year}, 1, NOW())
+    ON CONFLICT ("year") DO UPDATE
+      SET "lastValue" = "LoanCodeCounter"."lastValue" + 1,
+          "updatedAt" = NOW()
+    RETURNING "lastValue"`;
+
+  const sequence = Number(rows[0]?.lastValue ?? 1);
+  return `EMP-${year}-${String(sequence).padStart(4, "0")}`;
+}
+
 export const loansService = {
   async create(input: LoanCreateInput, actorId: string, ip?: string, userAgent?: string) {
     const client = await prisma.client.findUnique({ where: { id: input.clientId } });
@@ -95,25 +117,31 @@ export const loansService = {
     const interestRatePercent = Number(policy.interestRatePercent);
 
     const grantedAt = input.grantedAt ? new Date(input.grantedAt) : new Date();
+    const year = grantedAt.getUTCFullYear();
 
-    const loan = await prisma.loan.create({
-      data: {
-        clientId: input.clientId,
-        userId: actorId,
-        policyId: input.policyId,
-        grantedAt,
-        principalAmount: input.principalAmount,
-        interestRatePercent,
-        periodicity: input.periodicity,
-        billingModel: input.billingModel,
-        installmentCount: input.installmentCount ?? null,
-        startDate: input.startDate ? new Date(input.startDate) : null,
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
-        contractTerms: input.contractTerms ?? null,
-        observations: input.observations ?? null,
-        status: "DRAFT",
-      },
-      include: { client: true, user: true, policy: true },
+    const loan = await prisma.$transaction(async (tx) => {
+      const code = await nextLoanCode(tx, year);
+
+      return tx.loan.create({
+        data: {
+          code,
+          clientId: input.clientId,
+          userId: actorId,
+          policyId: input.policyId,
+          grantedAt,
+          principalAmount: input.principalAmount,
+          interestRatePercent,
+          periodicity: input.periodicity,
+          billingModel: input.billingModel,
+          installmentCount: input.installmentCount ?? null,
+          startDate: input.startDate ? new Date(input.startDate) : null,
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          contractTerms: input.contractTerms ?? null,
+          observations: input.observations ?? null,
+          status: "DRAFT",
+        },
+        include: { client: true, user: true, policy: true },
+      });
     });
 
     await auditService.log({
@@ -122,6 +150,7 @@ export const loansService = {
       entityType: "Loan",
       entityId: loan.id,
       newValues: {
+        code: loan.code,
         clientId: loan.clientId,
         principalAmount: loan.principalAmount,
         interestRatePercent: loan.interestRatePercent,
@@ -149,9 +178,12 @@ export const loansService = {
     const where: any = {};
     if (query.clientId) where.clientId = query.clientId;
     if (query.status) where.status = query.status;
+    if (query.settled === true) where.status = "LIQUIDATED";
+    if (query.settled === false) where.status = { not: "LIQUIDATED" };
     if (query.userId) where.userId = query.userId;
     if (query.search) {
       where.OR = [
+        { code: { contains: query.search, mode: "insensitive" } },
         { client: { name: { contains: query.search, mode: "insensitive" } } },
         { client: { cpf: { contains: query.search } } },
       ];
@@ -194,7 +226,10 @@ export const loansService = {
         payments: {
           orderBy: { registeredAt: "desc" },
           take: 10,
-          include: { user: { select: { id: true, name: true } } },
+          include: {
+            user: { select: { id: true, name: true } },
+            allocations: { select: { installment: { select: { number: true } } } },
+          },
         },
       },
     });
@@ -203,18 +238,34 @@ export const loansService = {
     }
     return {
       ...toSafeLoan(loan),
-      installments: loan.installments.map((i) => ({
-        id: i.id,
-        number: i.number,
-        dueDate: i.dueDate,
-        principalDue: Number(i.principalDue),
-        interestDue: Number(i.interestDue),
-        chargesDue: Number(i.chargesDue),
-        totalDue: Number(i.totalDue),
-        paidAmount: Number(i.paidAmount),
-        remainingBalance: Number(i.remainingBalance),
-        status: i.status,
-      })),
+      installments: loan.installments.map((i) => {
+        const daysOverdue =
+          i.status === "PAID" || i.status === "CANCELED"
+            ? 0
+            : Math.max(
+                0,
+                daysBetweenCalendarDates(toCalendarDate(i.dueDate), todayCalendarDate()),
+              );
+
+        return {
+          id: i.id,
+          number: i.number,
+          dueDate: i.dueDate,
+          principalDue: Number(i.principalDue),
+          interestDue: Number(i.interestDue),
+          chargesDue: Number(i.chargesDue),
+          totalDue: Number(i.totalDue),
+          paidAmount: Number(i.paidAmount),
+          remainingBalance: Number(i.remainingBalance),
+          status: i.status,
+          effectiveStatus:
+            (i.status === "PENDING" || i.status === "PARTIALLY_PAID") && daysOverdue > 0
+              ? "OVERDUE"
+              : i.status,
+          isOverdue: daysOverdue > 0,
+          daysOverdue,
+        };
+      }),
       payments: loan.payments.map((p) => ({
         id: p.id,
         receivedAmount: Number(p.receivedAmount),
@@ -223,6 +274,7 @@ export const loansService = {
         method: p.method,
         status: p.status,
         user: p.user?.name,
+        installments: p.allocations.map((a) => a.installment.number),
       })),
     };
   },
@@ -330,6 +382,51 @@ export const loansService = {
     await invalidationService.mark("installments", `loan:${id}`);
 
     return toSafeLoan(updated);
+  },
+
+  async remove(id: string, actorId: string, ip?: string, userAgent?: string) {
+    const loan = await prisma.loan.findUnique({
+      where: { id },
+      include: { _count: { select: { installments: true, payments: true } } },
+    });
+
+    if (!loan) {
+      throw new NotFoundError("Empréstimo não encontrado", "LOAN_NOT_FOUND");
+    }
+
+    const deletableStatus = loan.status === "DRAFT" || loan.status === "CANCELED";
+    const hasFinancialHistory = loan._count.installments > 0 || loan._count.payments > 0;
+
+    if (!deletableStatus || hasFinancialHistory) {
+      throw new ConflictError(
+        "Empréstimo com histórico financeiro não pode ser excluído (somente rascunho ou cancelado, sem parcelas e sem pagamentos)",
+        "LOAN_HAS_FINANCIAL_HISTORY",
+      );
+    }
+
+    await prisma.loan.delete({ where: { id } });
+
+    await auditService.log({
+      userId: actorId,
+      action: "DELETE",
+      entityType: "Loan",
+      entityId: id,
+      oldValues: {
+        code: loan.code,
+        clientId: loan.clientId,
+        status: loan.status,
+        principalAmount: loan.principalAmount,
+      },
+      ip,
+      userAgent,
+    });
+
+    await invalidationService.mark("loans", `loan:${id}`);
+    await invalidationService.mark("dashboards", "dashboards:*");
+    await invalidationService.mark("reports", "reports:*");
+    await invalidationService.mark("installments", `loan:${id}`);
+
+    return { id };
   },
 
   async generateInstallments(loan: any, actorId: string) {

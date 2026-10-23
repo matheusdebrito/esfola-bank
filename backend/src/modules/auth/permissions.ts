@@ -15,6 +15,7 @@ export const PERMISSIONS = {
   LOAN_CREATE: "loans:create",
   LOAN_UPDATE: "loans:update",
   LOAN_STATUS_CHANGE: "loans:status_change",
+  LOAN_DELETE: "loans:delete",
   // Parcelas
   INSTALLMENT_READ: "installments:read",
   // Pagamentos

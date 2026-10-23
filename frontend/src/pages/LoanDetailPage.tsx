@@ -21,28 +21,17 @@ import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InstallmentActions } from "@/pages/InstallmentsPage";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr, percent } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import {
+  installmentStatusLabel,
+  loanStatusLabel,
+  paymentMethodLabel,
+  paymentStatusLabel,
+  periodicityLabel,
+} from "@/lib/status-labels";
 import type { Installment, Loan, Payment } from "@/types/api";
-
-const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const dateBr = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "-";
-
-const statusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    DRAFT: "Rascunho",
-    ACTIVE: "Ativo",
-    LIQUIDATED: "Liquidado",
-    CANCELED: "Cancelado",
-    RENEGOTIATED: "Renegociado",
-    PENDING: "Pendente",
-    PARTIALLY_PAID: "Parcialmente paga",
-    PAID: "Paga",
-    OVERDUE: "Atrasada",
-  };
-  return labels[status] ?? status;
-};
 
 export default function LoanDetailPage() {
   const { loanId } = useParams();
@@ -51,7 +40,7 @@ export default function LoanDetailPage() {
   const queryClient = useQueryClient();
 
   const { data: loan, isLoading: loanLoading } = useQuery({
-    queryKey: ["loan", loanId],
+    queryKey: QUERY_KEYS.loans.detail(loanId ?? ""),
     queryFn: async () => {
       const res = await api.get(`/api/v1/loans/${loanId}`);
       return res.data.data.loan as Loan;
@@ -60,7 +49,7 @@ export default function LoanDetailPage() {
   });
 
   const { data: installments, isLoading: instLoading } = useQuery({
-    queryKey: ["installments", "loan", loanId],
+    queryKey: QUERY_KEYS.installments.byLoan(loanId ?? ""),
     queryFn: async () => {
       const res = await api.get(`/api/v1/installments?loanId=${loanId}&page=1&pageSize=100`);
       return res.data.data.items as Installment[];
@@ -80,19 +69,19 @@ export default function LoanDetailPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["installments", "loan", loanId] });
-      queryClient.invalidateQueries({ queryKey: ["loan", loanId] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.byLoan(loanId ?? "") });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(loanId ?? "") });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setReverseTarget(null);
       setReverseJustification("");
       toast({ title: "Pagamento estornado" });
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro ao estornar",
-        description: err.response?.data?.message || "",
+        description: getApiErrorMessage(err, "Não foi possível estornar o pagamento"),
         variant: "destructive",
       }),
   });
@@ -111,7 +100,7 @@ export default function LoanDetailPage() {
         <Button variant="outline" size="sm" onClick={() => navigate("/loans")}>
           ← Voltar aos empréstimos
         </Button>
-        <h2 className="text-xl font-semibold">Empréstimo #{loan.id.slice(-6)}</h2>
+        <h2 className="text-xl font-semibold">Empréstimo {loan.code}</h2>
       </div>
 
       <Card>
@@ -129,11 +118,11 @@ export default function LoanDetailPage() {
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Juros flat</p>
-            <p className="font-semibold">{Number(loan.interestRatePercent).toFixed(2)}%</p>
+            <p className="font-semibold">{percent(loan.interestRatePercent)}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Periodicidade</p>
-            <p className="font-semibold">{loan.periodicity === "DAILY" ? "Diário" : "Mensal"}</p>
+            <p className="font-semibold">{periodicityLabel(loan.periodicity)}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Status</p>
@@ -142,7 +131,7 @@ export default function LoanDetailPage() {
                 variant={loan.status === "ACTIVE" ? "default" : "secondary"}
                 className="capitalize"
               >
-                {statusLabel(loan.status)}
+                {loanStatusLabel(loan.status)}
               </Badge>
             </p>
           </div>
@@ -197,7 +186,7 @@ export default function LoanDetailPage() {
               { key: "paidAmount", label: "Pago", render: (v) => brl(Number(v)) },
               { key: "remainingBalance", label: "Saldo", render: (v) => brl(Number(v)) },
               { key: "lateCharges", label: "Encargos", render: (v) => brl(Number((v as any)?.totalLateCharges ?? 0)) },
-              { key: "status", label: "Status", render: (v) => statusLabel(v) },
+              { key: "status", label: "Status", render: (_v, row) => installmentStatusLabel(row.effectiveStatus ?? row.status) },
               { key: "daysOverdue", label: "Atraso (dias)" },
               { key: "actions", label: "", render: (_v, row) => <InstallmentActions installment={row} /> },
             ]}
@@ -215,12 +204,17 @@ export default function LoanDetailPage() {
         <CardContent>
           <SimpleTable
             columns={[
-              { key: "id", label: "ID", render: (v) => String(v ?? "").slice(-6) },
-              { key: "method", label: "Método" },
+              {
+                key: "installments",
+                label: "Parcelas",
+                render: (v: number[] | undefined) =>
+                  v && v.length > 0 ? v.map((n) => `#${n}`).join(", ") : "-",
+              },
+              { key: "method", label: "Método", render: (v) => paymentMethodLabel(v) },
               { key: "receivedAmount", label: "Valor", render: (v) => brl(Number(v)) },
               { key: "receivedAt", label: "Recebido em", render: (v) => dateBr(v) },
               { key: "userName", label: "Usuário", render: (v) => v ?? "-" },
-              { key: "status", label: "Status", render: (v) => statusLabel(v) },
+              { key: "status", label: "Status", render: (v) => paymentStatusLabel(v) },
               {
                 key: "actions",
                 label: "",

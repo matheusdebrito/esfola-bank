@@ -16,5 +16,12 @@ router.patch(
   requirePermission("loans:status_change"),
   loansController.changeStatus,
 );
+router.delete(
+  "/:id",
+  authenticate,
+  loadFreshUser,
+  requirePermission("loans:delete"),
+  loansController.remove,
+);
 
 export default router;

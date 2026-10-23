@@ -13,41 +13,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SimpleTable } from "@/components/SimpleTable";
+import { Pagination } from "@/components/Pagination";
 import { exportToCsv } from "@/lib/csv";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { brl, dateBr, dateTimeBr, toDateTimeInputValue } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { installmentStatusLabel, paymentMethodLabel, paymentStatusLabel } from "@/lib/status-labels";
 import type { Installment } from "@/types/api";
 
-const METHOD_LABELS: Record<string, string> = {
-  CASH: "Dinheiro",
-  PIX: "PIX",
-  TRANSFER: "Transferência",
-  CHECK: "Cheque",
-  OTHER: "Outro",
-};
-
-function nowLocalInput() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function emptyForm() {
-  return { loanId: "", receivedAmount: "", receivedAt: nowLocalInput(), method: "PIX", reference: "", observations: "" };
+  return {
+    loanId: "",
+    receivedAt: toDateTimeInputValue(),
+    method: "PIX",
+    reference: "",
+    observations: "",
+  };
 }
 
 export default function PaymentsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["payments"],
+    queryKey: [...QUERY_KEYS.payments.list, debouncedSearch, page],
     queryFn: async () => {
-      const res = await api.get("/api/v1/payments?page=1&pageSize=50");
-      return res.data.data.items;
+      const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await api.get(`/api/v1/payments?${params.toString()}`);
+      return res.data.data as { items: any[]; meta: { page: number; pageSize: number; total: number; totalPages: number } };
     },
   });
 
+  const payments = data?.items ?? [];
+  const meta = data?.meta;
+
   const { data: activeLoans } = useQuery({
-    queryKey: ["loans", "active"],
+    queryKey: QUERY_KEYS.loans.active,
     queryFn: async () => {
       const res = await api.get("/api/v1/loans?page=1&pageSize=100&status=ACTIVE");
       return res.data.data.items as any[];
@@ -56,10 +67,10 @@ export default function PaymentsPage() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
-  const [allocations, setAllocations] = useState<Record<string, number>>({});
+  const [selectedInstallments, setSelectedInstallments] = useState<Set<string>>(new Set());
 
   const { data: installments, isLoading: loadingInstallments } = useQuery({
-    queryKey: ["installments", "loan", form.loanId],
+    queryKey: QUERY_KEYS.installments.byLoan(form.loanId),
     enabled: !!form.loanId,
     queryFn: async () => {
       const res = await api.get(`/api/v1/installments?loanId=${form.loanId}&page=1&pageSize=100`);
@@ -68,27 +79,41 @@ export default function PaymentsPage() {
   });
 
   useEffect(() => {
-    setAllocations({});
-    setForm((prev) => ({ ...prev, receivedAmount: "" }));
+    setSelectedInstallments(new Set());
   }, [form.loanId]);
 
   const openInstallments = (installments ?? []).filter(
     (i) => i.status !== "PAID" && i.status !== "CANCELED" && Number(i.remainingBalance) > 0.005,
   );
+
   const totalOpen = openInstallments.reduce((sum, i) => sum + Number(i.remainingBalance), 0);
 
   const selectedLoan = (activeLoans ?? []).find((l) => l.id === form.loanId);
 
-  const totalAllocated = openInstallments.reduce((sum, i) => sum + Number(allocations[i.id] ?? 0), 0);
+  // Total a pagar = soma dos saldos + encargos de atraso das parcelas selecionadas
+  const totalToPay = openInstallments.reduce((sum, i) => {
+    if (!selectedInstallments.has(i.id)) return sum;
+    const lateCharges = i.lateCharges?.totalLateCharges ?? 0;
+    return sum + Number(i.remainingBalance) + lateCharges;
+  }, 0);
 
-  function setAllocation(installmentId: string, value: string) {
-    const amount = value === "" ? 0 : Math.max(0, Number(value) || 0);
-    const inst = openInstallments.find((i) => i.id === installmentId);
-    if (inst && amount > Number(inst.remainingBalance) + 0.005) return;
-    setAllocations((prev) => ({ ...prev, [installmentId]: amount }));
+  function toggleInstallment(installmentId: string) {
+    setSelectedInstallments((prev) => {
+      const next = new Set(prev);
+      if (next.has(installmentId)) {
+        next.delete(installmentId);
+      } else {
+        next.add(installmentId);
+      }
+      return next;
+    });
   }
 
-  function buildManualAllocations() {
+  function installmentTotal(inst: Installment): number {
+    return Number(inst.remainingBalance) + (inst.lateCharges?.totalLateCharges ?? 0);
+  }
+
+  function buildAllocations() {
     const result: {
       installmentId: string;
       principalAmount: number;
@@ -97,28 +122,19 @@ export default function PaymentsPage() {
     }[] = [];
 
     for (const inst of openInstallments) {
-      const allocatedCents = Math.round(Number(allocations[inst.id] ?? 0) * 100);
-      if (allocatedCents <= 0) continue;
+      if (!selectedInstallments.has(inst.id)) continue;
 
       const remainingCents = Math.round(Number(inst.remainingBalance) * 100);
-      if (allocatedCents > remainingCents) continue;
-
-      const totalDueCents = Math.round(Number(inst.totalDue) * 100) || allocatedCents;
-      const chargesDueCents = Math.round(Number(inst.chargesDue) * 100);
-      const interestDueCents = Math.round(Number(inst.interestDue) * 100);
-
-      let charges = Math.min(allocatedCents, Math.round((chargesDueCents / totalDueCents) * allocatedCents));
-      let interest = Math.min(
-        allocatedCents - charges,
-        Math.round((interestDueCents / totalDueCents) * allocatedCents),
-      );
-      const principal = allocatedCents - charges - interest;
+      const lateChargesCents = Math.round((inst.lateCharges?.totalLateCharges ?? 0) * 100);
+      const interestCents = Math.min(remainingCents, Math.round(Number(inst.interestDue) * 100));
+      const principalCents = remainingCents - interestCents;
+      const chargesCents = lateChargesCents;
 
       result.push({
         installmentId: inst.id,
-        principalAmount: principal / 100,
-        interestAmount: interest / 100,
-        chargesAmount: charges / 100,
+        principalAmount: principalCents / 100,
+        interestAmount: interestCents / 100,
+        chargesAmount: chargesCents / 100,
       });
     }
 
@@ -128,59 +144,65 @@ export default function PaymentsPage() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!form.loanId || !selectedLoan) throw new Error("Selecione um empréstimo ativo");
-      const amount = Number(form.receivedAmount);
-      if (!(amount > 0)) throw new Error("Informe um valor recebido maior que zero");
-
       if (openInstallments.length === 0) {
         throw new Error("Este empréstimo não possui parcelas em aberto");
       }
-      if (Math.round(totalAllocated * 100) <= 0) {
-        throw new Error("Selecione ao menos uma parcela e informe o valor a ser alocado");
+      if (selectedInstallments.size === 0) {
+        throw new Error("Selecione ao menos uma parcela para pagar");
       }
-      if (Math.round(totalAllocated * 100) !== Math.round(amount * 100)) {
-        throw new Error(
-          `O total alocado nas parcelas (R$ ${totalAllocated.toFixed(2)}) deve ser igual ao valor recebido (R$ ${amount.toFixed(2)})`,
-        );
-      }
-      if (Math.round(totalAllocated * 100) > Math.round(totalOpen * 100)) {
-        throw new Error(`O valor excede o saldo em aberto de R$ ${totalOpen.toFixed(2)}`);
-      }
+
+      const allocations = buildAllocations();
+      const totalAmount = totalToPay;
 
       return api.post("/api/v1/payments", {
         clientId: selectedLoan.clientId,
         loanId: form.loanId,
-        receivedAmount: amount,
+        receivedAmount: totalAmount,
         receivedAt: new Date(form.receivedAt).toISOString(),
         method: form.method,
         reference: form.reference || undefined,
         observations: form.observations || undefined,
-        allocations: buildManualAllocations(),
+        allocations,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["installments"] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+      const loanId = form.loanId;
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.installments.root });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.root });
+      if (loanId) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loans.detail(loanId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboards.root });
       setOpen(false);
       setForm(emptyForm());
+      setSelectedInstallments(new Set());
       toast({ title: "Pagamento lançado" });
     },
-    onError: (err: any) =>
+    onError: (err: unknown) =>
       toast({
         title: "Erro",
-        description: err.response?.data?.message || err.message || "Não foi possível lançar o pagamento",
+        description: getApiErrorMessage(err, "Não foi possível lançar o pagamento"),
         variant: "destructive",
       }),
   });
 
   const columns = [
     { key: "clientName", label: "Cliente" },
-    { key: "receivedAmount", label: "Valor recebido", render: (v: any) => `R$ ${Number(v).toFixed(2)}` },
-    { key: "method", label: "Método", render: (v: any) => METHOD_LABELS[v] ?? v },
-    { key: "receivedAt", label: "Recebido em", render: (v: any) => (v ? new Date(v).toLocaleString("pt-BR") : "") },
+    {
+      key: "loanCode",
+      label: "Empréstimo",
+      render: (v: any) => <span className="font-mono text-xs">{v ?? "—"}</span>,
+    },
+    {
+      key: "allocations",
+      label: "Parcelas",
+      render: (v: any) =>
+        Array.isArray(v) && v.length > 0 ? v.map((a) => `#${a.installmentNumber}`).join(", ") : "—",
+    },
+    { key: "receivedAmount", label: "Valor recebido", render: (v: any) => brl(Number(v)) },
+    { key: "method", label: "Método", render: (v: any) => paymentMethodLabel(v) },
+    { key: "receivedAt", label: "Recebido em", render: (v: any) => dateTimeBr(v) },
     { key: "userName", label: "Usuário" },
-    { key: "status", label: "Status", render: (v: any) => (v === "REVERSED" ? "Estornado" : "Registrado") },
+    { key: "status", label: "Status", render: (v: any) => paymentStatusLabel(v) },
   ];
 
   return (
@@ -194,7 +216,7 @@ export default function PaymentsPage() {
             onClick={() =>
               exportToCsv({
                 filename: "recebimentos",
-                data: isLoading ? [] : data,
+                data: isLoading ? [] : payments,
                 columns,
               })
             }
@@ -204,10 +226,20 @@ export default function PaymentsPage() {
         </div>
       </div>
       {isLoading ? <p className="text-muted-foreground">Carregando...</p> : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Pesquisar por cliente, empréstimo, referência..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
+      </div>
+
       <Card>
         <CardHeader><CardTitle>Pagamentos lançados</CardTitle></CardHeader>
         <CardContent>
-          <SimpleTable columns={columns} data={isLoading ? [] : data} />
+          <SimpleTable columns={columns} data={isLoading ? [] : payments} />
+          <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
         </CardContent>
       </Card>
 
@@ -224,7 +256,7 @@ export default function PaymentsPage() {
                 <option value="">Selecione um empréstimo</option>
                 {(activeLoans ?? []).map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.clientName} — R$ {Number(l.principalAmount).toFixed(2)} ({l.installmentCount} parcelas)
+                    {l.code} — {l.clientName} — R$ {Number(l.principalAmount).toFixed(2)} ({l.installmentCount} parcelas)
                   </option>
                 ))}
               </Select>
@@ -237,9 +269,9 @@ export default function PaymentsPage() {
                   <span>R$ {totalOpen.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span>Total alocado nas parcelas</span>
-                  <span className={totalAllocated > 0 ? "text-primary" : "text-muted-foreground"}>
-                    R$ {totalAllocated.toFixed(2)}
+                  <span>Total selecionado</span>
+                  <span className={totalToPay > 0 ? "text-primary font-medium" : "text-muted-foreground"}>
+                    R$ {totalToPay.toFixed(2)}
                   </span>
                 </div>
                 {loadingInstallments ? (
@@ -247,53 +279,53 @@ export default function PaymentsPage() {
                 ) : openInstallments.length === 0 ? (
                   <p className="text-xs text-destructive">Nenhuma parcela em aberto neste empréstimo.</p>
                 ) : (
-                  <div className="max-h-32 overflow-auto border rounded-md p-2 text-xs">
+                  <div className="max-h-40 overflow-auto border rounded-md p-2 text-xs">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-muted/50 text-muted-foreground">
-                          <th className="p-2 w-16">Selecionar</th>
+                          <th className="p-2 w-10 text-center">Pagar</th>
                           <th className="p-2">Parcela</th>
                           <th className="p-2 text-right">Vencimento</th>
-                          <th className="p-2 text-right">Saldo (R$)</th>
-                          <th className="p-2 text-right">Valor a alocar (R$)</th>
+                          <th className="p-2 text-right">Saldo</th>
+                          <th className="p-2 text-right">Encargos</th>
+                          <th className="p-2 text-right">Total</th>
                         </tr>
                       </thead>
                       <tbody>
                         {openInstallments.map((i) => {
-                          const amount = allocations[i.id] ?? 0;
-                          const exceeds = amount > Number(i.remainingBalance) + 0.005;
+                          const isSelected = selectedInstallments.has(i.id);
+                          const lateCharges = i.lateCharges?.totalLateCharges ?? 0;
+                          const total = installmentTotal(i);
                           return (
-                            <tr key={i.id} className="border-b border-border hover:bg-accent/50">
-                              <td className="p-2">
+                            <tr
+                              key={i.id}
+                              className={`border-b border-border hover:bg-accent/50 cursor-pointer ${
+                                isSelected ? "bg-primary/5" : ""
+                              }`}
+                              onClick={() => toggleInstallment(i.id)}
+                            >
+                              <td className="p-2 text-center">
                                 <input
                                   type="checkbox"
-                                  checked={amount > 0}
-                                  onChange={() =>
-                                    setAllocation(i.id, amount > 0 ? "0" : Number(i.remainingBalance).toFixed(2))
-                                  }
+                                  checked={isSelected}
+                                  onChange={() => toggleInstallment(i.id)}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </td>
                               <td className="p-2">
-                                Parcela {i.number} — venc.{" "}
-                                {new Date(i.dueDate).toLocaleDateString("pt-BR")} (
-                                {i.status === "OVERDUE" ? "atrasada" : i.status === "PARTIALLY_PAID" ? "parcial" : "pendente"}
-                                )
+                                Parcela {i.number} (
+                                {installmentStatusLabel(i.effectiveStatus ?? i.status)})
                               </td>
-                              <td className="p-2 text-right">{Number(i.remainingBalance).toFixed(2)}</td>
+                              <td className="p-2 text-right">{dateBr(i.dueDate)}</td>
+                              <td className="p-2 text-right">{brl(Number(i.remainingBalance))}</td>
                               <td className="p-2 text-right">
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={amount === 0 ? "" : amount.toFixed(2)}
-                                  onChange={(e) => setAllocation(i.id, e.target.value)}
-                                  className="w-full text-right"
-                                  disabled={exceeds}
-                                />
-                                {exceeds ? (
-                                  <p className="text-[10px] text-destructive mt-0">Excede o saldo</p>
-                                ) : null}
+                                {lateCharges > 0 ? (
+                                  <span className="text-destructive">{brl(lateCharges)}</span>
+                                ) : (
+                                  "—"
+                                )}
                               </td>
+                              <td className="p-2 text-right font-medium">{brl(total)}</td>
                             </tr>
                           );
                         })}
@@ -304,13 +336,6 @@ export default function PaymentsPage() {
               </div>
             ) : null}
 
-            <div className="space-y-2">
-              <Label>Valor recebido (R$)</Label>
-              <Input required type="number" min="0.01" step="0.01" value={form.receivedAmount} onChange={(e) => setForm({ ...form, receivedAmount: e.target.value })} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Escolha as parcelas e informe o valor a ser alocado em cada uma. O total alocado deve ser igual ao valor recebido.
-            </p>
             <div className="space-y-2">
               <Label>Data do recebimento</Label>
               <Input required type="datetime-local" value={form.receivedAt} onChange={(e) => setForm({ ...form, receivedAt: e.target.value })} />
@@ -336,8 +361,8 @@ export default function PaymentsPage() {
 
             <DialogFooter className="md:col-span-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Salvando..." : "Salvar"}
+              <Button type="submit" disabled={createMutation.isPending || selectedInstallments.size === 0}>
+                {createMutation.isPending ? "Salvando..." : `Lançar pagamento (R$ ${totalToPay.toFixed(2)})`}
               </Button>
             </DialogFooter>
           </form>

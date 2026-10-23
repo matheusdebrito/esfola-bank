@@ -4,6 +4,7 @@ import { passwordService } from "./password.service";
 import { env } from "../../config/env";
 import { logger } from "../../config/logger";
 import { AppError } from "../../shared/errors";
+import { rolePermissions } from "./permissions";
 import type { LoginInput } from "./auth.schema";
 
 const ACCESS_TOKEN_NAME = "access_token";
@@ -19,6 +20,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  permissions: string[];
 }
 
 export const authService = {
@@ -123,8 +125,14 @@ export const authService = {
     });
   },
 
-  mapUser(user: { id: string; email: string; name: string; role: string; active: boolean }): AuthUser {
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+  mapUser(user: { id: string; email: string; name: string; role: string; active?: boolean }): AuthUser {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      permissions: rolePermissions[user.role] ?? [],
+    };
   },
 
   async recordAuthEvent(
