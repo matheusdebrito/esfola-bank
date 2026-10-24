@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 
 type LoanStatusRows = { status: string; total: bigint };
-type AmountRow = { principal: Prisma.Decimal };
 type MonthRow = { month: string; incoming: Prisma.Decimal; outgoing: Prisma.Decimal };
 
 /** Real, mutually exclusive classifications of active loans, never installment-level guesses. */
