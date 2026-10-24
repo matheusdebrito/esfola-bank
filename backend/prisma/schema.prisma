@@ -141,6 +141,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([active])
+  @@index([deletedAt])
 }
 
 model RefreshToken {
