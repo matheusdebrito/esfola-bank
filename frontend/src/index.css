@@ -4,53 +4,53 @@
 
 @layer base {
   :root {
-    /* Interface de baixo croma: cinza mineral, verde salvia e superfícies neutras. */
-    --background: 160 9% 96%;
-    --foreground: 165 8% 21%;
-    --card: 0 0% 100%;
-    --card-foreground: 165 8% 21%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 165 8% 21%;
-    --primary: 160 20% 30%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 155 12% 91%;
-    --secondary-foreground: 165 8% 22%;
-    --muted: 155 9% 93%;
-    --muted-foreground: 165 6% 39%;
-    --accent: 153 15% 89%;
-    --accent-foreground: 165 8% 22%;
-    --destructive: 4 59% 40%;
+    /* Preto profundo com superficies em camadas para leitura prolongada. */
+    --background: 225 8% 7%;
+    --foreground: 210 12% 91%;
+    --card: 225 7% 12%;
+    --card-foreground: 210 12% 91%;
+    --popover: 225 7% 12%;
+    --popover-foreground: 210 12% 91%;
+    --primary: 42 43% 69%;
+    --primary-foreground: 225 8% 9%;
+    --secondary: 225 6% 19%;
+    --secondary-foreground: 210 12% 91%;
+    --muted: 225 6% 18%;
+    --muted-foreground: 210 8% 69%;
+    --accent: 225 7% 22%;
+    --accent-foreground: 210 12% 94%;
+    --destructive: 3 54% 44%;
     --destructive-foreground: 0 0% 100%;
-    --border: 160 8% 85%;
-    --input: 160 8% 83%;
-    --ring: 160 20% 34%;
+    --border: 225 6% 25%;
+    --input: 225 6% 26%;
+    --ring: 42 43% 69%;
     --radius: .875rem;
-    --chart-1: 37 40% 48%;
-    --chart-2: 153 45% 34%;
-    --chart-3: 160 13% 38%;
-    --chart-4: 4 59% 40%;
-    --chart-5: 155 12% 56%;
+    --chart-1: 42 46% 67%;
+    --chart-2: 157 43% 54%;
+    --chart-3: 210 25% 66%;
+    --chart-4: 3 63% 59%;
+    --chart-5: 270 22% 66%;
   }
   .dark {
-    --background: 34 12% 11%;
-    --foreground: 39 27% 94%;
-    --card: 35 12% 16%;
-    --card-foreground: 39 27% 94%;
-    --popover: 35 12% 16%;
-    --popover-foreground: 39 27% 94%;
-    --primary: 38 42% 67%;
-    --primary-foreground: 36 12% 12%;
-    --secondary: 35 10% 24%;
-    --secondary-foreground: 39 27% 94%;
-    --muted: 35 10% 24%;
-    --muted-foreground: 36 12% 74%;
-    --accent: 36 16% 27%;
-    --accent-foreground: 39 27% 94%;
-    --destructive: 0 63% 51%;
+    --background: 225 8% 7%;
+    --foreground: 210 12% 91%;
+    --card: 225 7% 12%;
+    --card-foreground: 210 12% 91%;
+    --popover: 225 7% 12%;
+    --popover-foreground: 210 12% 91%;
+    --primary: 42 43% 69%;
+    --primary-foreground: 225 8% 9%;
+    --secondary: 225 6% 19%;
+    --secondary-foreground: 210 12% 91%;
+    --muted: 225 6% 18%;
+    --muted-foreground: 210 8% 69%;
+    --accent: 225 7% 22%;
+    --accent-foreground: 210 12% 94%;
+    --destructive: 3 54% 44%;
     --destructive-foreground: 0 0% 100%;
-    --border: 35 10% 30%;
-    --input: 35 10% 30%;
-    --ring: 38 42% 67%;
+    --border: 225 6% 25%;
+    --input: 225 6% 26%;
+    --ring: 42 43% 69%;
   }
   * { @apply border-border; }
   body {
@@ -93,7 +93,7 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(202, 165, 106, .42);
   border-radius: 999px;
-  border: 2px solid #434C49;
+  border: 2px solid #101114;
 }
 .sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -105,5 +105,18 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 
 /* Dourado reservado a destaques, com contraste alto sobre fundo escuro. */
 .brand-gold { color: #B89B67; }
-.brand-gold-bg { background-color: #B89B67; color: #434C49; }
+.brand-gold-bg { background-color: #C9B485; color: #131416; }
 .brand-gold-bg:hover { background-color: #CAB080; }
+
+/* Harmoniza telas legadas que ainda usam classes claras fixas. */
+@layer utilities {
+  html.dark [class~="bg-white"], html.dark [class~="bg-slate-50"], html.dark [class~="bg-stone-50"], html.dark [class~="bg-[#F4F6F5]"] { background-color: #1D2024; }
+  html.dark [class~="bg-slate-100"], html.dark [class~="bg-stone-100"] { background-color: #292D32; }
+  html.dark [class~="text-slate-900"], html.dark [class~="text-slate-800"], html.dark [class~="text-stone-900"] { color: #E6E8EB; }
+  html.dark [class~="text-slate-700"], html.dark [class~="text-slate-600"], html.dark [class~="text-stone-700"], html.dark [class~="text-stone-600"] { color: #C1C7CD; }
+  html.dark [class~="text-slate-500"], html.dark [class~="text-stone-500"] { color: #A6ADB5; }
+  html.dark [class~="border-slate-200"], html.dark [class~="border-slate-100"], html.dark [class~="border-stone-200"] { border-color: #34383E; }
+  html.dark [class~="divide-slate-100"] > :not([hidden]) ~ :not([hidden]) { border-color: #34383E; }
+  html.dark input:not([type="checkbox"]):not([type="radio"]), html.dark select, html.dark textarea { color-scheme: dark; }
+  html.dark [class~="bg-[#F2EFE9]"], html.dark [class~="bg-[#EEF2F0]"], html.dark [class~="bg-[#f3f6fa]"] { background-color: #25292D; }
+}
