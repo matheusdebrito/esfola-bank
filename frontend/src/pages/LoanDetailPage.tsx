@@ -3,7 +3,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { PaymentEntryDialog } from "@/components/PaymentEntryDialog";
 import { CreditCard, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/api/client";
@@ -62,6 +62,7 @@ export default function LoanDetailPage() {
     enabled: !!loanId,
   });
 
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [reverseTarget, setReverseTarget] = useState<Payment | null>(null);
   const [reverseJustification, setReverseJustification] = useState("");
 
@@ -110,11 +111,11 @@ export default function LoanDetailPage() {
           <h1 className="break-words text-xl font-bold tracking-tight sm:text-2xl">{loan.code}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{loan.clientName ?? "Cliente"} · {loanStatusLabel(loan.status)}</p>
         </div>
-        {loan.status === "ACTIVE" && can("payments:register") && <Link
-          to={`/payments?new=1&loanId=${encodeURIComponent(loan.id)}`}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90">
+        {loan.status === "ACTIVE" && can("payments:register") && <Button
+          onClick={() => setPaymentOpen(true)}
+          className="h-11 gap-2">
           <CreditCard className="h-4 w-4" /> Registrar pagamento
-        </Link>}
+        </Button>}
       </header>
 
       <Card>
@@ -251,6 +252,13 @@ export default function LoanDetailPage() {
           />
         </CardContent>
       </Card>
+
+      <PaymentEntryDialog
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        initialLoan={loan}
+        onSuccess={() => navigate("/payments")}
+      />
 
       <Dialog open={!!reverseTarget} onOpenChange={(value) => { if (!value) setReverseTarget(null); }}>
         <DialogContent>
