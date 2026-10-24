@@ -91,7 +91,7 @@ export default function UsersPage() {
     </header>
     <Card className="min-w-0 border border-slate-200 p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold"><UsersRound className="h-5 w-5 text-blue-600"/> Equipe cadastrada</h2>
+        <h2 className="flex items-center gap-2 text-sm font-bold"><UsersRound className="h-5 w-5 text-[#85602E]"/> Equipe cadastrada</h2>
         <span className="text-xs text-muted-foreground">{listing.data?.meta.total ?? 0} usuário(s)</span>
       </div>
       <Input aria-label="Buscar usuário" placeholder="Buscar por nome ou e-mail..." value={search}
@@ -104,7 +104,7 @@ export default function UsersPage() {
             <thead className="bg-slate-50 text-slate-600"><tr>
               {["Usuário", "E-mail (imutável)", "Perfil", "Status", "Ações"].map(h => <th key={h} className="px-3 py-3 font-semibold">{h}</th>)}
             </tr></thead><tbody className="divide-y divide-slate-100">{listing.data.items.map(row => <tr key={row.id}>
-              <td className="px-3 py-3 font-semibold text-slate-900">{row.name}{me?.id === row.id && <span className="ml-2 text-[10px] text-blue-600">(você)</span>}</td>
+              <td className="px-3 py-3 font-semibold text-slate-900">{row.name}{me?.id === row.id && <span className="ml-2 text-[10px] text-[#85602E]">(você)</span>}</td>
               <td className="px-3 py-3 text-slate-600">{row.email}</td>
               <td className="px-3 py-3 text-slate-700">{labelRole(row.role)}</td>
               <td className="px-3 py-3"><span className={"rounded-full px-2 py-1 text-[11px] font-medium " + (row.active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500")}>{row.active ? "Ativo" : "Inativo"}</span></td>
@@ -117,7 +117,7 @@ export default function UsersPage() {
         </div>
         <div className="space-y-3 md:hidden">{listing.data.items.map(row => <div key={row.id} className="rounded-xl border border-slate-200 p-3">
           <div className="flex items-start justify-between gap-2"><div className="min-w-0">
-            <p className="break-words text-sm font-bold text-slate-900">{row.name} {me?.id === row.id && <span className="text-xs font-normal text-blue-600">(você)</span>}</p>
+            <p className="break-words text-sm font-bold text-slate-900">{row.name} {me?.id === row.id && <span className="text-xs font-normal text-[#85602E]">(você)</span>}</p>
             <p className="mt-0.5 break-all text-xs text-slate-500">{row.email}</p>
           </div><span className={"shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold " + (row.active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600")}>{row.active ? "Ativo" : "Inativo"}</span></div>
           <p className="mt-2 text-xs text-muted-foreground"><ShieldCheck className="mr-1 inline h-3.5 w-3.5"/>{labelRole(row.role)}</p>
@@ -148,12 +148,12 @@ export default function UsersPage() {
         <div className="space-y-2"><Label htmlFor="edit-user-email">E-mail de acesso (não editável)</Label><Input id="edit-user-email" disabled readOnly value={editUser?.email??""}/></div>
         <div className="space-y-2"><Label htmlFor="edit-user-name">Nome completo</Label><Input id="edit-user-name" required minLength={2} maxLength={255} value={edit.name} onChange={e=>setEdit(v=>({...v,name:e.target.value}))}/></div>
         <div className="space-y-2"><Label htmlFor="edit-user-role">Perfil</Label><Select id="edit-user-role" value={edit.role} onValueChange={role=>setEdit(v=>({...v,role}))}>{roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</Select></div>
-        <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm"><input type="checkbox" checked={edit.active} onChange={e=>setEdit(v=>({...v,active:e.target.checked}))} className="h-4 w-4 accent-blue-600"/>Conta ativa</label>
+        <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm"><input type="checkbox" checked={edit.active} onChange={e=>setEdit(v=>({...v,active:e.target.checked}))} className="h-4 w-4 accent-[#986F39]"/>Conta ativa</label>
         <DialogFooter><Button variant="outline" onClick={()=>{setEditUser(null);setResetPassword({newPassword:"",confirmation:""});}} disabled={update.isPending||reset.isPending}>Cancelar</Button><Button type="submit" disabled={update.isPending || edit.name.trim().length<2}>{update.isPending?"Salvando...":"Salvar alterações"}</Button></DialogFooter>
       </form>
       <div className="mt-5 space-y-4 border-t border-border pt-5">
         <div className="flex items-center gap-2">
-          <LockKeyhole className="h-5 w-5 text-[#AF802E]" aria-hidden />
+          <LockKeyhole className="h-5 w-5 text-[#986F39]" aria-hidden />
           <div>
             <h3 className="text-sm font-bold text-foreground">Redefinir senha do usuário</h3>
             <p className="text-xs text-muted-foreground">Não é necessário conhecer a senha atual. A ação será auditada.</p>
