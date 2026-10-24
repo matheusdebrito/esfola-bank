@@ -88,7 +88,7 @@ function Metric({ index, value, subtitle }: { index: number; value: string; subt
       </span>
       <div className="min-w-0 flex-1">
         <p className={"text-[11px] font-medium " + (index === 3 ? "text-red-600" : "text-slate-700")}>{info.label}</p>
-        <p className={"mt-1 break-words text-[clamp(1rem,2vw,1.42rem)] font-extrabold tracking-tight tabular-nums " + (index === 0 ? "text-[#07a05a]" : index === 1 ? "text-[#0645a9]" : index === 3 ? "text-red-600" : "text-slate-950")}>{value}</p>
+        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#07a05a]" : index === 1 ? "text-[#0645a9]" : index === 3 ? "text-red-600" : "text-slate-950")}>{value}</p>
         <p className="mt-1.5 text-[11px] leading-snug text-slate-600">{subtitle ?? info.hint}</p>
       </div>
     </div>
