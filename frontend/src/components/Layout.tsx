@@ -101,7 +101,7 @@ function Notices() {
   const count = (data?.overdueInstallments ?? 0) + (data?.dueToday ?? 0);
   return <div className="relative">
     <button type="button" onClick={() => setOpen(!open)} aria-label="Notificações da operação" aria-expanded={open}
-      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500">
+      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 lg:text-slate-600 lg:hover:bg-slate-100">
       <Bell className="h-5 w-5" />
       {count > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
     </button>
@@ -193,9 +193,9 @@ export default function Layout() {
     </aside>
 
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#e9eef4] bg-white px-3 sm:px-6">
+      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#103e5e] bg-[#06263a] px-3 sm:px-6 lg:border-[#e9eef4] lg:bg-white">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <button onClick={() => setOpen(true)} aria-label="Abrir menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg hover:bg-slate-100 lg:hidden"><Menu className="h-5 w-5"/></button>
+          <button onClick={() => setOpen(true)} aria-label="Abrir menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10 lg:hidden"><Menu className="h-5 w-5"/></button>
           <div className="lg:hidden"><Brand small/></div>
           <QuickSearch className="ml-1 hidden w-[min(100%,470px)] sm:block" />
         </div>
