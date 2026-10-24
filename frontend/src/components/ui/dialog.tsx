@@ -2,7 +2,7 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function Dialog({ open, onOpenChange, children }: { open: boolean; onOpenChange: (v: boolean) => void; children: React.ReactNode }) {
+export function Dialog({ open, onOpenChange, children, size = "default" }: { open: boolean; onOpenChange: (v: boolean) => void; children: React.ReactNode; size?: "default" | "sm" }) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const lastFocusedRef = React.useRef<HTMLElement | null>(null);
 
@@ -43,7 +43,7 @@ export function Dialog({ open, onOpenChange, children }: { open: boolean; onOpen
   return <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-5">
     <button type="button" aria-label="Fechar janela" className="absolute inset-0 bg-slate-950/60 backdrop-blur-[3px]" onClick={() => onOpenChange(false)} />
     <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Janela de formulário" tabIndex={-1}
-      className="relative z-10 flex max-h-[95dvh] w-full max-w-2xl flex-col overflow-y-auto rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl outline-none sm:max-h-[90dvh] sm:rounded-2xl sm:p-6">
+      className={cn("relative z-10 flex max-h-[95dvh] w-full flex-col overflow-y-auto rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl outline-none sm:max-h-[90dvh] sm:rounded-2xl sm:p-6", size === "sm" ? "sm:max-w-[410px]" : "max-w-2xl")}>
       <button type="button" aria-label="Fechar" onClick={() => onOpenChange(false)}
         className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground">
         <X className="h-4 w-4" />

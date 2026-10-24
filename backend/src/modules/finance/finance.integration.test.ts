@@ -5,6 +5,7 @@ import { financeService } from "./finance.service";
 import { paymentsService } from "../payments/payments.service";
 import { financeEntryCreateSchema } from "./finance.schema";
 import { rolePermissions } from "../auth/permissions";
+import { getVisualCashFlow, getVisualLoanStatus } from "../dashboards/visual.service";
 
 const prisma = getPrisma();
 let userId: string;
@@ -158,6 +159,34 @@ describe("livro-caixa e resultado financeiro (PostgreSQL)", () => {
     expect(paged.meta.total).toBe(2);
     expect(paged.meta.totalPages).toBe(2);
     expect(paged.items).toHaveLength(1);
+  });
+
+  it("o gráfico financeiro reproduz o saldo real e a rosca classifica contratos sem duplicação", async () => {
+    const status = await getVisualLoanStatus();
+    expect(status.total).toBe(1);
+    expect(status.current + status.soon + status.overdue).toBe(status.total);
+    expect(status.activePrincipal).toBe(100);
+    const flow = await getVisualCashFlow();
+    expect(flow.initialized).toBe(true);
+    if (flow.initialized) {
+      expect(flow.months).toHaveLength(6);
+      const latest = flow.months[5];
+      const overview = await financeService.overview();
+      expect(latest.balance).toBeCloseTo(overview.availableBalance ?? 0, 2);
+      expect(latest.incoming).toBeGreaterThanOrEqual(0);
+      expect(latest.outgoing).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("extrato de caixa inclui saldo após evento e responsável, mesmo com filtros", async () => {
+    const history = await financeService.list({ page: 1, pageSize: 100, type: "ALL" });
+    const latest = history.items[0];
+    expect(latest?.userName).toBe("Gestor");
+    expect(latest?.balanceAfter).toBeCloseTo((await financeService.overview()).availableBalance ?? 0, 2);
+    const filtered = await financeService.list({ page: 1, pageSize: 100, type: "WITHDRAWAL" });
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.items[0].reversed).toBe(true);
+    expect(typeof filtered.items[0].balanceAfter).toBe("number");
   });
 
   it("valida moedas e preserva rastreabilidade", async () => {

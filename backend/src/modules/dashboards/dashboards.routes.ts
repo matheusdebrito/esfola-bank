@@ -2,6 +2,8 @@ import { Router } from "express";
 import { authenticate, loadFreshUser } from "../../middlewares/auth.middleware";
 import { requirePermission } from "../../middlewares/permission.middleware";
 import { dashboardsController } from "./dashboards.controller";
+import { asyncHandler } from "../../middlewares/error.middleware";
+import { getVisualLoanStatus } from "./visual.service";
 
 const router = Router();
 
@@ -11,6 +13,9 @@ router.get("/defaults", authenticate, loadFreshUser, requirePermission("dashboar
 router.get("/operational", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.operational);
 router.get("/fiscalization", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.fiscalization);
 router.get("/monthly", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.monthly);
+router.get("/loan-status", authenticate, loadFreshUser, requirePermission("dashboards:read"), asyncHandler(async (_req, res) => {
+  res.json({ error: false, data: await getVisualLoanStatus() });
+}));
 router.get("/overview", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.overview);
 router.get("/upcoming-due", authenticate, loadFreshUser, requirePermission("dashboards:read"), dashboardsController.upcomingDue);
 
