@@ -34,11 +34,7 @@ const roleName: Record<string, string> = { ADMIN: "Administrador", MANAGER: "Ger
 
 function Brand({ small = false }: { small?: boolean }) {
   return <Link to="/dashboard" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D5AC61]" aria-label="Esfola Bank — dashboard">
-    <img src="/favicon-corvo.svg" alt="" aria-hidden className={cn("shrink-0 object-contain", small ? "h-8 w-8" : "h-[76px] w-[76px]")} />
-    <span className={cn("min-w-0 text-center leading-[.94] tracking-[-.035em]", small ? "text-[11px]" : "text-[22px]")}>
-      <strong className="block font-serif text-[#EBC77D]">ESFOLA</strong>
-      <strong className="mt-1 block text-[.45em] tracking-[.3em] text-[#D8B470]">BANK</strong>
-    </span>
+    <img src="/logo-esfola-gold.png" alt="" aria-hidden className={cn("shrink-0 object-contain", small ? "h-10 w-10" : "h-[118px] w-[155px]")} />
   </Link>;
 }
 
@@ -162,7 +158,7 @@ export default function Layout() {
     {open && <button className="fixed inset-0 z-40 bg-stone-950/60 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)}/>}
     <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101114] text-white transition-transform lg:static lg:w-[215px] lg:shrink-0 xl:w-[245px]",
       open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} aria-label="Navegação principal">
-      <div className="flex h-[150px] shrink-0 items-center justify-center gap-2 px-4">
+      <div className="flex h-[160px] shrink-0 items-center justify-center gap-2 px-4">
         <Brand />
         <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-stone-300 lg:hidden" aria-label="Fechar menu"><X className="h-5 w-5"/></button>
       </div>
