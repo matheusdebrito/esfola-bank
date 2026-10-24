@@ -41,9 +41,7 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -right-14 -top-10 h-[300px] w-[300px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-[#CDB78A]/10 blur-3xl" />
       <div className="relative flex w-full max-w-[420px] flex-col items-center justify-center gap-4 text-center">
-        <img src="/favicon-corvo.svg" alt="Símbolo do corvo Esfola Bank" className="h-[240px] w-[240px] object-contain drop-shadow-[0_12px_35px_rgba(212,173,89,.2)]" />
-        <div className="font-serif text-[clamp(3.5rem,6vw,5.5rem)] font-bold leading-none tracking-tight text-[#EBC77D]">ESFOLA</div>
-        <div className="text-xl font-semibold tracking-[.55em] text-[#E5C582]">BANK</div>
+        <img src="/logo-esfola-gold.png" alt="Símbolo do corvo Esfola Bank" className="h-[300px] w-full max-w-[400px] object-contain drop-shadow-[0_12px_35px_rgba(212,173,89,.2)]" />
       </div>
     </section>
 
@@ -51,7 +49,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[425px]">
         <div className="mb-8 flex items-center justify-center gap-4 lg:hidden">
           <div className="flex h-[116px] w-[116px] shrink-0 items-center justify-center" aria-hidden="true">
-            <img src="/favicon-corvo.svg" alt="" className="h-[105px] w-[105px] object-contain" />
+            <img src="/logo-esfola-gold.png" alt="" className="h-[110px] w-[150px] object-contain" />
           </div>
           <div><p className="text-base font-bold text-foreground">Esfola Bank</p><p className="text-xs text-muted-foreground">Gestão de empréstimos</p></div>
         </div>
