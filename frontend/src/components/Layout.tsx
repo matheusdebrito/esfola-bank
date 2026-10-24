@@ -33,13 +33,11 @@ const allowed = (item: NavItem, role?: string) => !item.roles || !!role && item.
 const roleName: Record<string, string> = { ADMIN: "Administrador", MANAGER: "Gerente", AUDITOR: "Auditor", OPERATOR: "Operador" };
 
 function Brand({ small = false }: { small?: boolean }) {
-  return <Link to="/dashboard" className="flex min-w-0 items-center gap-2 rounded-lg text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Esfola Bank — dashboard">
-    <span className="flex h-10 w-10 shrink-0 items-end justify-center text-white">
-      <img src="/favicon-corvo.svg" alt="" className="h-10 w-10 rounded-xl object-cover" aria-hidden />
-    </span>
+  return <Link to="/dashboard" className="flex min-w-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Esfola Bank — dashboard">
+    <img src="/favicon-corvo.svg" alt="" aria-hidden className={cn("shrink-0 rounded-full", small ? "h-9 w-9" : "h-11 w-11")} />
     <span className={cn("min-w-0 leading-[.94] tracking-[-.045em]", small ? "text-[15px]" : "text-[20px]")}>
-      <strong className="block text-white">ESFOLA</strong>
-      <strong className="mt-0.5 block text-[#E6DBBE]">BANK</strong>
+      <strong className="block text-[#F3F0E8]">ESFOLA</strong>
+      <strong className="mt-0.5 block text-[#D6BC88]">BANK</strong>
     </span>
   </Link>;
 }
@@ -79,7 +77,7 @@ function QuickSearch({ className = "" }: { className?: string }) {
       onChange={e => setTerm(e.target.value)} onFocus={() => setFocused(true)}
       onBlur={() => setTimeout(() => setFocused(false), 180)}
       onKeyDown={e => { if (e.key === "Escape") setFocused(false); if (e.key === "Enter" && results[0]) { navigate(results[0].to); setTerm(""); setFocused(false); } }}
-      className="h-10 w-full rounded-lg border border-transparent bg-[#EEF2F0] pl-10 pr-3 text-xs text-[#303A36] outline-none placeholder:text-[#7E8984] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+      className="h-10 w-full rounded-lg border border-transparent bg-[#24272B] pl-10 pr-3 text-xs text-[#E5E7EB] outline-none placeholder:text-[#7E8984] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
     {focused && debounced.length >= 2 && <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
       {results.length ? results.map(x => <button key={x.to} onMouseDown={e => e.preventDefault()}
         onClick={() => { navigate(x.to); setFocused(false); setTerm(""); }}
@@ -101,7 +99,7 @@ function Notices() {
   const count = (data?.overdueInstallments ?? 0) + (data?.dueToday ?? 0);
   return <div className="relative">
     <button type="button" onClick={() => setOpen(!open)} aria-label="Notificações da operação" aria-expanded={open}
-      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400 lg:text-stone-600 lg:hover:bg-stone-100">
+      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400 lg:text-[#CED3D8] lg:hover:bg-[#30343A]">
       <Bell className="h-5 w-5" />
       {count > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
     </button>
@@ -148,7 +146,7 @@ export default function Layout() {
     const Icon = item.icon;
     return <NavLink key={item.href} to={item.href} onClick={() => setOpen(false)}
       className={cn("flex min-h-[43px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400",
-        active(location.pathname, item.href) ? "bg-[#738D81]/25 text-[#F3F4F0]" : "text-stone-200/90 hover:bg-white/10 hover:text-white")}
+        active(location.pathname, item.href) ? "bg-[#BFA66F]/25 text-[#F3F0E8]" : "text-stone-200/90 hover:bg-white/10 hover:text-white")}
       aria-current={active(location.pathname, item.href) ? "page" : undefined}>
       <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.8} aria-hidden />
       <span className="min-w-0 flex-1">{item.name}</span>
@@ -160,9 +158,9 @@ export default function Layout() {
     { title: "ACESSO RÁPIDO", items: secondaryItems },
     { title: "Administração", items: adminItems },
   ];
-  return <div className="flex h-[100dvh] overflow-hidden bg-[#F4F6F5]">
+  return <div className="flex h-[100dvh] overflow-hidden bg-[#121416]">
     {open && <button className="fixed inset-0 z-40 bg-stone-950/60 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)}/>}
-    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#434C49] text-white transition-transform lg:static lg:w-[210px] lg:shrink-0 xl:w-[230px]",
+    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101114] text-white transition-transform lg:static lg:w-[210px] lg:shrink-0 xl:w-[230px]",
       open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} aria-label="Navegação principal">
       <div className="flex h-[94px] shrink-0 items-center justify-between gap-2 px-4">
         <Brand />
@@ -173,14 +171,14 @@ export default function Layout() {
           const items = section.items.filter(item => allowed(item, role));
           if (!items.length) return null;
           return <div key={section.title || "nav"} className="space-y-1">
-            {section.title && <div className="px-3 pb-2 pt-2 text-[11px] font-medium text-[#D8E1D9]">{section.title}</div>}
+            {section.title && <div className="px-3 pb-2 pt-2 text-[11px] font-medium text-[#AFB5BC]">{section.title}</div>}
             {items.map(navItem)}
           </div>;
         })}
       </nav>
       <div className="space-y-1 border-t border-white/10 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         <Link to="/profile" onClick={() => setOpen(false)} aria-label="Editar meu perfil" title="Meu perfil" className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DCE5DE] text-sm font-bold text-[#434C49]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#34373C] text-sm font-bold text-[#101114]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
           <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{user?.name ?? "Usuário"}</span>
             <span className="block text-[11px] text-[#D5CABE]">{roleName[role ?? ""] ?? "Conta"}</span></span>
           <ChevronRight className="h-4 w-4 text-stone-400"/>
@@ -193,7 +191,7 @@ export default function Layout() {
     </aside>
 
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#59635F] bg-[#434C49] px-3 sm:px-6 lg:border-[#DFE6E2] lg:bg-white">
+      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#59635F] bg-[#101114] px-3 sm:px-6 lg:border-[#34383E] lg:bg-[#1C1E22]">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button onClick={() => setOpen(true)} aria-label="Abrir menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10 lg:hidden"><Menu className="h-5 w-5"/></button>
           <div className="lg:hidden"><Brand small/></div>
@@ -209,14 +207,14 @@ export default function Layout() {
       <main id="main-content" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-5 lg:px-6 lg:pb-7 xl:px-7">
         <div className="mx-auto w-full max-w-[1550px]"><Outlet /></div>
       </main>
-      <nav aria-label="Acesso rápido" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t border-[#DFE6E2] bg-[#434C49] px-1 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-xl lg:hidden">
+      <nav aria-label="Acesso rápido" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t border-[#DFE6E2] bg-[#101114] px-1 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-xl lg:hidden">
         {[
           { name: "Início", href: "/dashboard", icon: House },
           { name: "Empréstimos", href: "/loans", icon: BriefcaseBusiness },
         ].map(item => <NavLink key={item.href} to={item.href} className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,item.href)?"text-[#F3F4F0]":"text-stone-300")}>
           <item.icon className="h-[19px] w-[19px]"/>{item.name}
         </NavLink>)}
-        <Link to={canCreate ? "/loans?new=1" : "/dashboard"} aria-label={canCreate ? "Novo empréstimo" : "Início"} className="-mt-3 flex h-14 w-14 items-center justify-center justify-self-center rounded-full bg-[#D5C19C] text-[#434C49] shadow-[0_3px_16px_rgba(214,164,68,.4)]">
+        <Link to={canCreate ? "/loans?new=1" : "/dashboard"} aria-label={canCreate ? "Novo empréstimo" : "Início"} className="-mt-3 flex h-14 w-14 items-center justify-center justify-self-center rounded-full bg-[#D6BC88] text-[#101114] shadow-[0_3px_16px_rgba(214,164,68,.4)]">
           <Plus className="h-7 w-7"/>
         </Link>
         <NavLink to="/clients" className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,"/clients")?"text-[#F3F4F0]":"text-stone-300")}>
