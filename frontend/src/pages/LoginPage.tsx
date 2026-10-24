@@ -41,8 +41,8 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -right-14 -top-10 h-[300px] w-[300px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-[#CDB78A]/10 blur-3xl" />
       <div className="relative flex flex-wrap items-center gap-5">
-        <div className="relative flex h-[148px] w-[148px] shrink-0 items-center justify-center overflow-hidden rounded-[28px] bg-[#222429] shadow-[0_10px_40px_rgba(0,0,0,.22)] ring-2 ring-[#CDB78A]/75" aria-hidden="true">
-          <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
+        <div className="flex h-[148px] w-[148px] shrink-0 items-center justify-center" aria-hidden="true">
+          <img src="/favicon-corvo.svg" alt="" className="h-[132px] w-[132px] object-contain" />
         </div>
         <div>
           <p className="text-lg font-bold tracking-tight">Esfola Bank</p>
@@ -71,8 +71,8 @@ export default function LoginPage() {
     <main className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-10">
       <div className="w-full max-w-[425px]">
         <div className="mb-8 flex items-center gap-4 lg:hidden">
-          <div className="relative flex h-[116px] w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#222429] shadow-sm ring-2 ring-[#CDB78A]/60" aria-hidden="true">
-            <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
+          <div className="flex h-[116px] w-[116px] shrink-0 items-center justify-center" aria-hidden="true">
+            <img src="/favicon-corvo.svg" alt="" className="h-[105px] w-[105px] object-contain" />
           </div>
           <div><p className="text-base font-bold text-foreground">Esfola Bank</p><p className="text-xs text-muted-foreground">Gestão de empréstimos</p></div>
         </div>
