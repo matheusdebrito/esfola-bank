@@ -204,25 +204,39 @@ export const financeService = {
       SELECT e."id"::text AS id, e."type"::text AS type, e."amount"::numeric AS amount,
              e."effectiveAt" AS date, e."description" AS description,
              e."loanId"::text AS "loanId", e."reversedAt" IS NOT NULL AS reversed,
-             'MANUAL'::text AS source
-        FROM "FinanceEntry" e
+             'MANUAL'::text AS source, u."name"::text AS "userName"
+      FROM "FinanceEntry" e JOIN "User" u ON u."id" = e."createdById"
       UNION ALL
       SELECT p."id"::text AS id, 'PAYMENT'::text AS type, p."receivedAmount"::numeric AS amount,
              p."receivedAt" AS date, CONCAT('Recebimento ', l."code", ' - ', c."name") AS description,
              p."loanId"::text AS "loanId", p."status" = 'REVERSED' AS reversed,
-             'PAYMENT'::text AS source
-        FROM "Payment" p JOIN "Loan" l ON l."id" = p."loanId" JOIN "Client" c ON c."id" = p."clientId"`;
+             'PAYMENT'::text AS source, u."name"::text AS "userName"
+      FROM "Payment" p JOIN "Loan" l ON l."id" = p."loanId"
+      JOIN "Client" c ON c."id" = p."clientId"
+      JOIN "User" u ON u."id" = p."userId"`;
+    // Compute balances over ALL events before filtering/page limits.
+    const history = Prisma.sql`
+      SELECT m.*, ${book.openingBalance}::numeric +
+        SUM(CASE WHEN m.reversed THEN 0::numeric
+                 WHEN m.type IN ('CONTRIBUTION', 'PAYMENT') THEN m.amount
+                 ELSE -m.amount END)
+        OVER (ORDER BY m.date ASC, m.id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+        AS "balanceAfter"
+      FROM (${union}) m
+      WHERE m.date >= ${book.startedAt} AND m.date <= ${new Date()}`;
     const offset = (query.page - 1) * query.pageSize;
     const [rows, counts] = await Promise.all([
-      prisma.$queryRaw<Array<{ id: string; type: string; amount: Prisma.Decimal; date: Date; description: string; loanId: string | null; reversed: boolean; source: string }>>`
-        SELECT * FROM (${union}) movements ${filters}
+      prisma.$queryRaw<Array<{ id: string; type: string; amount: Prisma.Decimal; date: Date;
+        description: string; loanId: string | null; reversed: boolean; source: string;
+        userName: string; balanceAfter: Prisma.Decimal }>>`
+        SELECT * FROM (${history}) movements ${filters}
         ORDER BY date DESC, id DESC LIMIT ${query.pageSize} OFFSET ${offset}`,
       prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*)::bigint AS count FROM (${union}) movements ${filters}`,
+        SELECT COUNT(*)::bigint AS count FROM (${history}) movements ${filters}`,
     ]);
     const total = Number(counts[0]?.count ?? 0);
     return {
-      items: rows.map((row) => ({ ...row, amount: Number(row.amount) })),
+      items: rows.map((row) => ({ ...row, amount: Number(row.amount), balanceAfter: Number(row.balanceAfter) })),
       meta: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) },
     };
   },
