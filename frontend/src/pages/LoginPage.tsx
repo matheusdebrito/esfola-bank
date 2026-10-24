@@ -41,8 +41,8 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -right-14 -top-10 h-[300px] w-[300px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-blue-500/10 blur-3xl" />
       <div className="relative flex items-center gap-3">
-        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 shadow-lg">
-          <img src="/logo-nova.jpg" alt="" className="h-full w-full object-contain" />
+        <div className="relative flex h-[84px] w-[84px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg" aria-hidden="true">
+          <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
         </div>
         <div>
           <p className="text-lg font-bold tracking-tight">Esfola Bank</p>
@@ -71,8 +71,8 @@ export default function LoginPage() {
     <main className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-10">
       <div className="w-full max-w-[425px]">
         <div className="mb-8 flex items-center gap-3 lg:hidden">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 shadow-sm">
-            <img src="/logo-nova.jpg" alt="" className="h-full w-full object-contain" />
+          <div className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm" aria-hidden="true">
+            <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
           </div>
           <div><p className="text-base font-bold text-foreground">Esfola Bank</p><p className="text-xs text-muted-foreground">Gestão de empréstimos</p></div>
         </div>
