@@ -1,0 +1,45 @@
+name: Visual Audit (isolated mock data)
+on:
+  push:
+    branches:
+      - qa/brand-cash-20261023
+permissions:
+  contents: read
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install application dependencies
+        run: npm ci
+      - name: Install visual test browser (temporary)
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start isolated frontend
+        run: |
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/visual-audit-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:5173/ > /dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/visual-audit-vite.log
+          exit 1
+      - name: Inspect all responsive views
+        run: node scripts/visual-audit.cjs
+      - name: Archive screenshots and findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-audit-screenshots
+          path: frontend/visual-audit-output/
+          retention-days: 7
