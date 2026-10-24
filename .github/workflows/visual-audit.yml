@@ -35,7 +35,9 @@ jobs:
           cat /tmp/visual-audit-vite.log
           exit 1
       - name: Inspect all responsive views
-        run: node scripts/visual-audit.cjs
+        run: |
+          node scripts/visual-audit.cjs
+          node scripts/render-brand-icons.cjs
       - name: Archive screenshots and findings
         if: always()
         uses: actions/upload-artifact@v4
