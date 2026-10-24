@@ -21,7 +21,7 @@ router.patch("/:id/active", authenticate, loadFreshUser, requirePermission("user
 router.delete("/:id", authenticate, loadFreshUser, requirePermission("users:delete"), usersController.delete);
 
 // redefinir senha: apenas ADMIN
-router.post("/:id/reset-password", authenticate, loadFreshUser, requirePermission("users:create"), usersController.resetPassword);
+router.post("/:id/reset-password", authenticate, loadFreshUser, requirePermission("users:update"), usersController.resetPassword);
 
 // alterar própria senha: qualquer autenticado
 router.post("/me/password", authenticate, loadFreshUser, usersController.changePassword);
