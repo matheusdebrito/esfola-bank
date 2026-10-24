@@ -69,7 +69,7 @@ const cases=[
   {route:"/loans?new=1",width:375,height:812,name:"loan-modal-mobile"},
   {route:"/payments?new=1",width:375,height:812,name:"payment-modal-mobile"},
 ];
-const raster=new Set(["dashboard-320","dashboard-mobile","dashboard-desktop","collections-mobile","finance-mobile","loan-modal-mobile","login-mobile","login-desktop"]);
+const raster=new Set(["dashboard-320","dashboard-mobile","dashboard-desktop","collections-mobile","finance-mobile","loan-modal-mobile","payment-modal-mobile","login-mobile","login-desktop"]);
 (async()=>{
   const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
   const results=[];
@@ -84,6 +84,8 @@ const raster=new Set(["dashboard-320","dashboard-mobile","dashboard-desktop","co
       await page.goto("http://127.0.0.1:5173"+c.route,{waitUntil:"networkidle",timeout:30000});
       await page.waitForTimeout(800);
       const hasModal=await page.locator('[role="dialog"]').count();
+      // Native select focus can show an OS picker backdrop in Chromium mobile screenshots.
+      if(hasModal)await page.locator('[role="dialog"]').focus();
       const title=(await page.locator("h1").allTextContents()).join(" | ");
       const dimensions=await page.evaluate(()=>{
         const main=document.querySelector("main");
