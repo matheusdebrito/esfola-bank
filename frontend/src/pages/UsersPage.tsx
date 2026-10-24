@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pagination } from "@/components/Pagination";
-import { Pencil, Plus, Trash2, UsersRound, ShieldCheck } from "lucide-react";
+import { Pencil, Plus, Trash2, UsersRound, ShieldCheck, LockKeyhole, Eye, EyeOff } from "lucide-react";
 
 type UserRow = { id: string; name: string; email: string; role: string; active: boolean; createdAt: string };
 type UsersResponse = { items: UserRow[]; meta: { total: number; page: number; pageSize: number; totalPages: number } };
@@ -35,6 +35,8 @@ export default function UsersPage() {
   const [createForm, setCreateForm] = useState(emptyCreate);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [edit, setEdit] = useState({ name: "", role: "OPERATOR", active: true });
+  const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmation: "" });
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
@@ -56,6 +58,19 @@ export default function UsersPage() {
     onSuccess: () => { refresh();setEditUser(null);toast({ title: "Usuário atualizado" }); },
     onError: (error: unknown) => toast({ title: "Não foi possível atualizar", description: getApiErrorMessage(error,"Confira os dados."), variant:"destructive" }),
   });
+  const reset = useMutation({
+    mutationFn: async () => {
+      if (!editUser || !canManage || editUser.id === me?.id) throw new Error("Selecione outro usuário");
+      if (!resetPassword.newPassword || resetPassword.newPassword !== resetPassword.confirmation) throw new Error("As senhas não coincidem");
+      await api.post("/api/v1/users/" + editUser.id + "/reset-password", { newPassword: resetPassword.newPassword });
+    },
+    onSuccess: () => {
+      setResetPassword({ newPassword: "", confirmation: "" });
+      setPasswordVisible(false);
+      toast({ title: "Senha redefinida", description: "O usuário precisará acessar novamente com a nova senha." });
+    },
+    onError: (error: unknown) => toast({ title: "Não foi possível redefinir a senha", description: getApiErrorMessage(error, "Tente novamente."), variant: "destructive" }),
+  });
   const remove = useMutation({
     mutationFn: () => {
       if (!deleteUser) throw new Error("Nenhum usuário selecionado");
@@ -64,7 +79,7 @@ export default function UsersPage() {
     onSuccess: () => { refresh();setDeleteUser(null);setDeleteConfirmation("");toast({ title: "Conta excluída", description: "Acesso bloqueado e histórico financeiro preservado." }); },
     onError: (error: unknown) => toast({ title: "Não foi possível excluir", description: getApiErrorMessage(error,"Tente novamente."), variant:"destructive" }),
   });
-  function openEdit(user: UserRow) { setEditUser(user);setEdit({ name:user.name,role:user.role,active:user.active }); }
+  function openEdit(user: UserRow) { setEditUser(user);setEdit({ name:user.name,role:user.role,active:user.active });setResetPassword({ newPassword:"",confirmation:"" });setPasswordVisible(false); }
   function submitEdit(event: FormEvent<HTMLFormElement>) { event.preventDefault();if(!canManage || !editUser || edit.name.trim().length < 2 || update.isPending)return;update.mutate(); }
 
   return <div className="space-y-5 pb-7">
@@ -127,15 +142,60 @@ export default function UsersPage() {
         <DialogFooter><Button variant="outline" onClick={()=>setCreateOpen(false)} disabled={create.isPending}>Cancelar</Button><Button type="submit" disabled={create.isPending}>{create.isPending?"Criando...":"Criar usuário"}</Button></DialogFooter>
       </form>
     </Dialog>
-    <Dialog open={!!editUser} onOpenChange={v => { if(!v && !update.isPending)setEditUser(null); }}>
-      <DialogHeader><DialogTitle>Editar usuário</DialogTitle><DialogDescription>O nome, perfil e situação podem ser alterados. O e-mail permanece imutável.</DialogDescription></DialogHeader>
+    <Dialog open={!!editUser} onOpenChange={v => { if(!v && !update.isPending && !reset.isPending){setEditUser(null);setResetPassword({newPassword:"",confirmation:""});setPasswordVisible(false);} }}>
+      <DialogHeader><DialogTitle>Editar usuário</DialogTitle><DialogDescription>Atualize nome, perfil, situação e senha. O e-mail permanece imutável.</DialogDescription></DialogHeader>
       <form className="mt-4 space-y-4" onSubmit={submitEdit}>
         <div className="space-y-2"><Label htmlFor="edit-user-email">E-mail de acesso (não editável)</Label><Input id="edit-user-email" disabled readOnly value={editUser?.email??""}/></div>
         <div className="space-y-2"><Label htmlFor="edit-user-name">Nome completo</Label><Input id="edit-user-name" required minLength={2} maxLength={255} value={edit.name} onChange={e=>setEdit(v=>({...v,name:e.target.value}))}/></div>
         <div className="space-y-2"><Label htmlFor="edit-user-role">Perfil</Label><Select id="edit-user-role" value={edit.role} onValueChange={role=>setEdit(v=>({...v,role}))}>{roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</Select></div>
         <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm"><input type="checkbox" checked={edit.active} onChange={e=>setEdit(v=>({...v,active:e.target.checked}))} className="h-4 w-4 accent-blue-600"/>Conta ativa</label>
-        <DialogFooter><Button variant="outline" onClick={()=>setEditUser(null)} disabled={update.isPending}>Cancelar</Button><Button type="submit" disabled={update.isPending || edit.name.trim().length<2}>{update.isPending?"Salvando...":"Salvar alterações"}</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={()=>{setEditUser(null);setResetPassword({newPassword:"",confirmation:""});}} disabled={update.isPending||reset.isPending}>Cancelar</Button><Button type="submit" disabled={update.isPending || edit.name.trim().length<2}>{update.isPending?"Salvando...":"Salvar alterações"}</Button></DialogFooter>
       </form>
+      <div className="mt-5 space-y-4 border-t border-border pt-5">
+        <div className="flex items-center gap-2">
+          <LockKeyhole className="h-5 w-5 text-[#AF802E]" aria-hidden />
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Redefinir senha do usuário</h3>
+            <p className="text-xs text-muted-foreground">Não é necessário conhecer a senha atual. A ação será auditada.</p>
+          </div>
+        </div>
+        <form className="space-y-3" onSubmit={event => {
+          event.preventDefault();
+          if (reset.isPending || resetPassword.newPassword.length < 6 || resetPassword.newPassword !== resetPassword.confirmation) return;
+          reset.mutate();
+        }}>
+          <div className="space-y-1.5">
+            <Label htmlFor="admin-new-password">Nova senha</Label>
+            <div className="relative">
+              <Input id="admin-new-password" type={passwordVisible ? "text" : "password"} required
+                autoComplete="new-password" minLength={6} maxLength={128} className="pr-12"
+                value={resetPassword.newPassword} onChange={e=>setResetPassword(old=>({...old,newPassword:e.target.value}))}
+                placeholder="Mínimo de 6 caracteres" />
+              <button type="button" onClick={()=>setPasswordVisible(v=>!v)}
+                aria-label={passwordVisible?"Ocultar senha":"Mostrar senha"}
+                className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent">
+                {passwordVisible?<EyeOff className="h-4 w-4"/>:<Eye className="h-4 w-4"/>}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="admin-confirm-password">Confirmar nova senha</Label>
+            <Input id="admin-confirm-password" type={passwordVisible ? "text" : "password"} required
+              autoComplete="new-password" minLength={6} maxLength={128}
+              value={resetPassword.confirmation} onChange={e=>setResetPassword(old=>({...old,confirmation:e.target.value}))}
+              placeholder="Digite a nova senha novamente"/>
+          </div>
+          {resetPassword.confirmation && resetPassword.newPassword !== resetPassword.confirmation &&
+            <p className="text-xs text-destructive" role="alert">As senhas não coincidem.</p>}
+          <p className="text-xs text-muted-foreground">Após a redefinição, as sessões de atualização do usuário serão revogadas. Informe a nova senha ao usuário por um canal seguro.</p>
+          <div className="flex justify-end">
+            <Button type="submit" variant="secondary"
+              disabled={reset.isPending || resetPassword.newPassword.length < 6 || resetPassword.newPassword.length > 128 || resetPassword.newPassword !== resetPassword.confirmation}>
+              <LockKeyhole className="h-4 w-4"/> {reset.isPending?"Redefinindo...":"Redefinir senha"}
+            </Button>
+          </div>
+        </form>
+      </div>
     </Dialog>
     <Dialog open={!!deleteUser} onOpenChange={v => { if(!v && !remove.isPending)setDeleteUser(null); }}>
       <DialogHeader><DialogTitle>Excluir conta</DialogTitle><DialogDescription>O usuário perderá acesso imediatamente. Empréstimos, pagamentos e registros de auditoria serão preservados.</DialogDescription></DialogHeader>
