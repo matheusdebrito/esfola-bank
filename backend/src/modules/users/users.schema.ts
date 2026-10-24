@@ -8,18 +8,19 @@ export const userCreateSchema = z.object({
 });
 
 export const userUpdateSchema = z
-  .strictObject({
+  .object({
     name: z.string().min(2).max(255).optional(),
     role: z.enum(["ADMIN", "MANAGER", "OPERATOR", "AUDITOR"]).optional(),
     active: z.boolean().optional(),
   })
+  .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: "Pelo menos um campo deve ser informado",
   });
 
-export const ownProfileSchema = z.strictObject({
+export const ownProfileSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres").max(255),
-});
+}).strict();
 
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, "Senha atual é obrigatória"),
