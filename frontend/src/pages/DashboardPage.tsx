@@ -25,10 +25,10 @@ type CashFlow = { initialized: boolean; months: CashMonth[] };
 type LoanStatus = { current: number; soon: number; overdue: number; total: number; activePrincipal: number };
 type Movement = { id: string; type: string; amount: number; description: string; date: string; reversed: boolean };
 const cards: { label: string; hint: string; color: string; iconBg: string; iconColor: string; Icon: LucideIcon }[] = [
-  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "from-[#EFF7F1] to-[#FBFDF9] border-[#DAE7DE]", iconBg: "bg-[#d4f6e4]", iconColor: "text-[#18704E]", Icon: Wallet },
-  { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "from-[#F5EBD5] to-[#FFFDF7] border-[#E8D4A8]", iconBg: "bg-[#EED9AA]", iconColor: "text-[#8B621A]", Icon: Coins },
-  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "from-[#F8F0E0] to-[#FFFCF6] border-[#EADBBD]", iconBg: "bg-[#EFE1C3]", iconColor: "text-[#9F7425]", Icon: TrendingUp },
-  { label: "Em atraso", hint: "Parcelas vencidas", color: "from-[#F9EDEC] to-[#FFFAF9] border-[#EDD8D5]", iconBg: "bg-[#ffe6e6]", iconColor: "text-[#B33A38]", Icon: CircleAlert },
+  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#1B4D3D]", iconColor: "text-[#62D9A0]", Icon: Wallet },
+  { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#57442B]", iconColor: "text-[#E0B466]", Icon: Coins },
+  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#1B4D3D]", iconColor: "text-[#62D9A0]", Icon: TrendingUp },
+  { label: "Em atraso", hint: "Parcelas vencidas", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#522D30]", iconColor: "text-[#FC7676]", Icon: CircleAlert },
 ];
 const periods = [
   { value: "30d", label: "Últimos 30 dias" },
@@ -71,8 +71,8 @@ function waUrl(row: Installment): string | null {
 }
 function CardTitle({ children, href }: { children: React.ReactNode; href?: string }) {
   return <div className="mb-4 flex items-center justify-between gap-2">
-    <h2 className="text-[15px] font-bold tracking-tight text-[#111e33]">{children}</h2>
-    {href && <Link to={href} className="shrink-0 text-xs font-semibold text-[#80601F] hover:underline">Ver todos</Link>}
+    <h2 className="text-[15px] font-bold tracking-tight text-[#E8EAED]">{children}</h2>
+    {href && <Link to={href} className="shrink-0 text-xs font-semibold text-[#D6BC88] hover:underline">Ver todos</Link>}
   </div>;
 }
 function Empty({ children }: { children: React.ReactNode }) {
@@ -81,14 +81,14 @@ function Empty({ children }: { children: React.ReactNode }) {
 function Metric({ index, value, subtitle }: { index: number; value: string; subtitle?: string }) {
   const info = cards[index];
   const Icon = info.Icon;
-  return <div className={"min-w-0 rounded-xl border bg-gradient-to-br px-4 py-4 sm:px-5 sm:py-5 " + info.color}>
+  return <div className={"min-w-0 rounded-xl border px-4 py-4 sm:px-5 sm:py-5 " + info.color}>
     <div className="flex items-start gap-3">
       <span className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-xl " + info.iconBg}>
         <Icon className={"h-6 w-6 " + info.iconColor} strokeWidth={2.2} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className={"text-[11px] font-medium " + (index === 3 ? "text-red-600" : "text-slate-700")}>{info.label}</p>
-        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#07a05a]" : index === 1 ? "text-[#664817]" : index === 3 ? "text-red-600" : "text-slate-950")}>{value}</p>
+        <p className={"text-[11px] font-medium " + (index === 3 ? "text-[#F08C88]" : "text-[#BCC5C8]")}>{info.label}</p>
+        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#59D19C]" : index === 1 ? "text-[#E6B56D]" : index === 3 ? "text-[#F07872]" : "text-[#59D19C]")}>{value}</p>
         <p className="mt-1.5 text-[11px] leading-snug text-slate-600">{subtitle ?? info.hint}</p>
       </div>
     </div>
@@ -111,7 +111,7 @@ function DetailRow({ name, amount, sub, href, accent = "rose", phoneUrl }: {
   </div>;
 }
 const moneyTick = (value: number) => new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 0 }).format(value);
-const colorOf = ["#268566", "#C49A46", "#B64B45"];
+const colorOf = ["#43B68A", "#D9A950", "#EC6464"];
 const monthLabel = (month: string) => {
   const i = Number(month.split("-")[1]) - 1;
   return ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][i] ?? month;
@@ -172,8 +172,8 @@ export default function DashboardPage() {
   </Card>;
   return <div className="space-y-4 pb-8 sm:space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div><h1 className="text-[26px] font-extrabold tracking-tight text-[#101b2e] sm:text-3xl">Dashboard</h1>
-        <p className="mt-1 text-[13px] text-[#627086]">Visão geral da operação</p>
+      <div><h1 className="text-[26px] font-extrabold tracking-tight text-[#ECEEF0] sm:text-3xl">Dashboard</h1>
+        <p className="mt-1 text-[13px] text-[#AAB3B8]">Visão geral da operação</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Select value={period} onValueChange={setPeriod} aria-label="Período do dashboard" className="h-10 w-full border-slate-200 bg-white text-xs sm:w-[175px]">
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         <Link to="/defaults"><Metric index={3} value={brl(info?.overdueAmount ?? 0)} subtitle={(info?.overdueInstallments ?? 0) + " parcela(s) atrasada(s)"} /></Link>
       </section>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.07fr_0.93fr]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.55fr_0.95fr]">
         <Card className="min-w-0 rounded-xl border border-slate-200 p-4 shadow-[0_2px_16px_-10px_#123] sm:p-5">
           <div className="mb-5 flex items-start justify-between gap-2">
             <div><h2 className="text-base font-bold tracking-tight text-slate-900">Resumo financeiro</h2>
@@ -209,9 +209,9 @@ export default function DashboardPage() {
             <div className="h-[235px] w-full sm:h-[265px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={cashFlow.months} margin={{ top: 12, right: 10, left: -23, bottom: 0 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#e9edf2" />
-                  <XAxis dataKey="month" tickFormatter={monthLabel} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#69778a" }} dy={9} />
-                  <YAxis tickFormatter={moneyTick} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8b95a4" }} />
+                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#343A40" />
+                  <XAxis dataKey="month" tickFormatter={monthLabel} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#AEB8BE" }} dy={9} />
+                  <YAxis tickFormatter={moneyTick} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#AEB8BE" }} />
                   <Tooltip formatter={(v: number, name: string) => [brl(v), name]} labelFormatter={monthLabel} />
                   <Bar dataKey="incoming" name="Entradas" fill="#268566" radius={[3, 3, 0, 0]} maxBarSize={25} />
                   <Bar dataKey="outgoing" name="Saídas" fill="#B64B45" radius={[3, 3, 0, 0]} maxBarSize={25} />
