@@ -36,7 +36,7 @@ const allItems = groups.flatMap(group => group.items);
 const bottomItems: NavItem[] = [
   { name: "Início", href: "/dashboard", icon: LayoutDashboard },
   { name: "Cobranças", href: "/defaults", icon: HandCoins },
-  { name: "Empréstimos", href: "/loans", icon: Wallet },
+  { name: "Contratos", href: "/loans", icon: Wallet },
   { name: "Clientes", href: "/clients", icon: UsersRound },
 ];
 
