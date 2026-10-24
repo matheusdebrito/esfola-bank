@@ -241,16 +241,17 @@ export default function CashPage() {
         <div className="space-y-2"><Label htmlFor="cashAmount">Valor *</Label>
           <Input id="cashAmount" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="R$ 0,00" required autoFocus /></div>
         <div className="space-y-2"><Label htmlFor="cashDescription">{open === "WITHDRAWAL" ? "Motivo da retirada *" : "Descrição *"}</Label>
-          <Input id="cashDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex.: aporte do sócio, transferência..." minLength={3} maxLength={500} required /></div>
+          <Input id="cashDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder={open === "WITHDRAWAL" ? "Ex.: retirada do sócio para despesas pessoais" : "Ex.: aporte do sócio, transferência..."} minLength={3} maxLength={500} required /></div>
         <div className="space-y-2"><Label htmlFor="cashDate">Data do registro</Label>
           <Input id="cashDate" value={dateTimeBr(new Date())} readOnly className="bg-slate-50 text-slate-500" />
           <p className="text-[11px] text-slate-500">Registrada automaticamente no horário do servidor.</p>
         </div>
         <DialogFooter><Button variant="outline" onClick={() => setOpen(null)} disabled={register.isPending}>Cancelar</Button>
-          <Button type="submit" disabled={register.isPending || !parseMoney(amount) || description.trim().length < 3}
-            className={open === "CONTRIBUTION" ? "bg-[#0bad63] hover:bg-[#079652]" : "bg-[#ef4545] hover:bg-[#d93636]"}>
+          <button type="submit" disabled={register.isPending || !parseMoney(amount) || description.trim().length < 3}
+            className={"inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-55 " +
+              (open === "CONTRIBUTION" ? "bg-[#0bad63] hover:bg-[#079652]" : "bg-[#ef4545] hover:bg-[#d93636]")}>
             {register.isPending ? "Registrando..." : open === "CONTRIBUTION" ? "Adicionar" : "Confirmar retirada"}
-          </Button>
+          </button>
         </DialogFooter>
       </form>
     </Dialog>
