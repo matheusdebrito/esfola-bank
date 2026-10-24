@@ -26,7 +26,7 @@ export interface AuthUser {
 export const authService = {
   async login(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: AuthUser; tokens: TokenPair }> {
     const user = await prisma.user.findUnique({ where: { email: input.email } });
-    if (!user || !user.active) {
+    if (!user || !user.active || user.deletedAt) {
       // não revela se o e-mail existe
       await this.recordAuthEvent(undefined, "LOGIN_FAILED", ip, userAgent, { reason: "user_not_found_or_inactive" });
       throw new AppError("E-mail ou senha inválidos", 401, "INVALID_CREDENTIALS");
@@ -94,7 +94,7 @@ export const authService = {
     });
 
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.active) {
+    if (!user || !user.active || user.deletedAt) {
       throw new AppError("Usuário inativo", 401, "USER_INACTIVE");
     }
 
