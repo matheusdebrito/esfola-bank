@@ -72,6 +72,7 @@ export default function FinancePage() {
   const [description, setDescription] = useState("");
   const [loanId, setLoanId] = useState("");
   const [page, setPage] = useState(1);
+  const [historyType, setHistoryType] = useState("ALL");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -111,11 +112,12 @@ export default function FinancePage() {
     enabled: data?.initialized === true && mayWrite,
     queryFn: async () => (await api.get("/api/v1/finance/eligible-loans")).data.data as EligibleLoan[],
   });
-  const { data: movements, isPending: loadingMovements } = useQuery({
-    queryKey: ["finance", "entries", page, from, to],
+  const { data: movements, isPending: loadingMovements, isError: movementsError, error: movementsFailure, refetch: retryMovements } = useQuery({
+    queryKey: ["finance", "entries", page, from, to, historyType],
     enabled: data?.initialized === true,
     queryFn: async () => {
       const p = new URLSearchParams({ page: String(page), pageSize: "15" });
+      if (historyType !== "ALL") p.set("type", historyType);
       if (from) p.set("from", toIsoDayStart(from));
       if (to) p.set("to", toIsoDayEnd(to));
       return (await api.get("/api/v1/finance/entries?" + p.toString())).data.data as FinancePageResult;
@@ -209,7 +211,7 @@ export default function FinancePage() {
       <div>
         <p className="mb-1 text-[11px] font-bold uppercase tracking-[.15em] text-primary">Gestão de caixa</p>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Financeiro</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Saldo, entradas e saídas desde {dateTimeBr(data.startedAt ?? "")}.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Confira o dinheiro disponível, registre movimentações e acompanhe o histórico do caixa.</p>
       </div>
       {mayWrite && <Button onClick={() => setShowEntryForm(current => !current)} variant={showEntryForm ? "outline" : "default"}>
         <Plus className="mr-1 h-4 w-4" /> {showEntryForm ? "Fechar lançamento" : "Nova movimentação"}
@@ -223,7 +225,7 @@ export default function FinancePage() {
         {brl(data.availableBalance ?? 0)}
       </p>
       <p className="mt-2 max-w-xl text-sm text-slate-300">
-        Saldo registrado para novos empréstimos. Considere os compromissos futuros e confirme os valores com o caixa real.
+        Valor registrado para emprestar, antes de compromissos futuros não lançados. Confira com seu caixa real.
       </p>
       {mayWrite && <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <button type="button" onClick={() => openMovement("CONTRIBUTION")}
@@ -268,9 +270,9 @@ export default function FinancePage() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo de movimentação</Label>
-          <Select value={kind} onValueChange={v => { setKind(v as FinanceEntryType); setLoanId(""); setAmount(""); }}>
+          <Select value={kind} onValueChange={v => { setKind(v as FinanceEntryType); setLoanId(""); setAmount(""); setDescription(""); }}>
             <option value="CONTRIBUTION">Aporte de capital</option>
-            <option value="WITHDRAWAL">Retirada de sócio</option>
+            <option value="WITHDRAWAL">Retirar dinheiro do caixa (sócio)</option>
             <option value="EXPENSE">Despesa operacional</option>
             <option value="DISBURSEMENT">Desembolso de empréstimo</option>
           </Select>
@@ -287,11 +289,17 @@ export default function FinancePage() {
           <Input id="financeAmount" inputMode="decimal" placeholder="Ex.: 250,00" value={amount} onChange={e => setAmount(e.target.value)}/>
         </div>}
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="financeDescription">Descrição ou justificativa</Label>
-          <Input id="financeDescription" maxLength={500} placeholder="Ex.: tarifa bancária, aporte do sócio, transferência ao cliente..." value={description} onChange={e => setDescription(e.target.value)}/>
+          <Label htmlFor="financeDescription">
+            {kind === "WITHDRAWAL" ? "Motivo da retirada (obrigatório)" : kind === "CONTRIBUTION" ? "Origem do dinheiro (obrigatório)" : kind === "EXPENSE" ? "Descrição da despesa (obrigatória)" : "Descrição do desembolso (obrigatória)"}
+          </Label>
+          <textarea id="financeDescription" rows={3} required minLength={3} maxLength={500}
+            className="flex w-full min-w-0 rounded-xl border border-input bg-card px-3 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/75 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/15"
+            placeholder={kind === "WITHDRAWAL" ? "Ex.: retirada do sócio para uso pessoal" : kind === "CONTRIBUTION" ? "Ex.: aporte feito pelo sócio via transferência" : kind === "EXPENSE" ? "Ex.: pagamento de tarifa bancária" : "Ex.: transferência do valor contratado ao cliente"}
+            value={description} onChange={e => setDescription(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Esta informação ficará registrada no histórico e só poderá ser corrigida com um estorno auditado.</p>
         </div>
       </div>
-      <Button disabled={mutationEntry.isPending || !description.trim() || (kind === "DISBURSEMENT" ? !selectedLoan : !(moneyValue(amount) && moneyValue(amount)! > 0))}
+      <Button disabled={mutationEntry.isPending || description.trim().length < 3 || (kind === "DISBURSEMENT" ? !selectedLoan : !(moneyValue(amount) && moneyValue(amount)! > 0))}
         onClick={() => {
           const total = kind === "DISBURSEMENT" ? selectedLoan?.principalAmount : moneyValue(amount);
           if (kind !== "CONTRIBUTION" && total && !window.confirm("Confirma a saída de " + brl(total) + " do caixa?")) return;
@@ -303,16 +311,29 @@ export default function FinancePage() {
 
     <Card className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-lg font-semibold">Extrato do caixa</h2>
-          <p className="text-xs text-muted-foreground">Pagamentos e movimentações com histórico de estornos.</p>
+        <div><h2 className="text-lg font-semibold">Histórico de movimentações do caixa</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Entradas, saídas, descrições e estornos desde {dateTimeBr(data.startedAt ?? "")}.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Input aria-label="A partir de" type="date" className="w-36" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }}/>
-          <Input aria-label="Até" type="date" className="w-36" min={from || undefined} value={to} onChange={e => { setTo(e.target.value); setPage(1); }}/>
+        <div className="grid w-full grid-cols-2 gap-2 md:w-auto md:grid-cols-[180px_144px_144px]">
+          <Select aria-label="Tipo de movimentação" className="col-span-2 md:col-span-1" value={historyType}
+            onValueChange={value => { setHistoryType(value); setPage(1); }}>
+            <option value="ALL">Todas as movimentações</option>
+            <option value="CONTRIBUTION">Dinheiro adicionado</option>
+            <option value="WITHDRAWAL">Dinheiro retirado</option>
+            <option value="EXPENSE">Despesas</option>
+            <option value="DISBURSEMENT">Empréstimos desembolsados</option>
+            <option value="PAYMENT">Pagamentos recebidos</option>
+          </Select>
+          <Input aria-label="Data inicial" title="Data inicial" type="date" className="min-w-0 w-full" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }}/>
+          <Input aria-label="Data final" title="Data final" type="date" className="min-w-0 w-full" min={from || undefined} value={to} onChange={e => { setTo(e.target.value); setPage(1); }}/>
         </div>
       </div>
       {loadingMovements ? <p className="text-sm text-muted-foreground">Carregando movimentações...</p> :
-      rows.length === 0 ? <p className="py-5 text-sm text-muted-foreground">Nenhuma movimentação encontrada.</p> :
+      movementsError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-rose-50 p-4 text-sm text-rose-800">
+        <span>{getApiErrorMessage(movementsFailure, "Não foi possível consultar o histórico de caixa.")}</span>
+        <Button size="sm" variant="outline" onClick={() => retryMovements()}>Tentar novamente</Button>
+      </div> :
+      rows.length === 0 ? <p className="py-5 text-sm text-muted-foreground">Nenhuma movimentação encontrada neste filtro.</p> :
       <div className="divide-y divide-border">
         {rows.map(row => <div key={row.source + row.id} className="flex items-center gap-3 py-3">
           <div className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted " + (cashPositive(row.type) ? "text-emerald-600" : "text-destructive")}>
@@ -320,7 +341,7 @@ export default function FinancePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{labels[row.type]}{row.reversed ? " · Estornado" : ""}</p>
-            <p className="truncate text-xs text-muted-foreground" title={row.description}>{row.description}</p>
+            <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{row.description}</p>
             <p className="text-xs text-muted-foreground">{dateTimeBr(row.date)}</p>
           </div>
           <div className="shrink-0 text-right">
@@ -332,10 +353,14 @@ export default function FinancePage() {
           </div>
         </div>)}
       </div>}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{movements?.meta.total ?? 0} movimentações · página {page}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+        <p className="text-xs text-muted-foreground">{movements?.meta.total ?? 0} movimentação(ões) encontrada(s) · página {page}</p>
         <Pagination page={page} totalPages={movements?.meta.totalPages ?? 1} onPageChange={setPage}/>
       </div>
+      <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+        Saldo de abertura: <strong className="text-foreground">{brl(data.openingBalance ?? 0)}</strong> em {dateTimeBr(data.startedAt ?? "")}.
+        Esse saldo foi conciliado na abertura e não é uma nova entrada de dinheiro.
+      </p>
     </Card>
     <p className="text-xs text-muted-foreground">O resultado operacional é uma medida de caixa e não representa lucro líquido contábil. Perdas de crédito, impostos não registrados e despesas fora do sistema não são estimados.</p>
   </div>;

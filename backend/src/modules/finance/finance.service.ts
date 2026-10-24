@@ -198,7 +198,8 @@ export const financeService = {
     const from = query.from ? new Date(Math.max(book.startedAt.getTime(), new Date(query.from).getTime())) : book.startedAt;
     const to = query.to ? new Date(query.to) : new Date();
     if (to < from) return { items: [], meta: { page: query.page, pageSize: query.pageSize, total: 0, totalPages: 0 } };
-    const filters = Prisma.sql`WHERE "date" >= ${from} AND "date" <= ${to}`;
+    const typeFilter = query.type && query.type !== "ALL" ? Prisma.sql` AND "type" = ${query.type}` : Prisma.empty;
+    const filters = Prisma.sql`WHERE "date" >= ${from} AND "date" <= ${to}${typeFilter}`;
     const union = Prisma.sql`
       SELECT e."id"::text AS id, e."type"::text AS type, e."amount"::numeric AS amount,
              e."effectiveAt" AS date, e."description" AS description,
