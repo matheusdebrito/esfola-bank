@@ -168,7 +168,7 @@ export default function Layout() {
         <Brand />
         <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 lg:hidden" aria-label="Fechar menu"><X className="h-5 w-5"/></button>
       </div>
-      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-2">
+      <nav className="sidebar-scrollbar min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-2">
         {sections.map(section => {
           const items = section.items.filter(item => allowed(item, role));
           if (!items.length) return null;
