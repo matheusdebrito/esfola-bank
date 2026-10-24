@@ -179,12 +179,12 @@ export default function Layout() {
         })}
       </nav>
       <div className="space-y-1 border-t border-white/10 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <div className="flex items-center gap-2 rounded-lg px-2 py-2">
+        <Link to="/profile" onClick={() => setOpen(false)} aria-label="Editar meu perfil" title="Meu perfil" className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e2efff] text-sm font-bold text-[#1661be]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
           <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{user?.name ?? "Usuário"}</span>
             <span className="block text-[11px] text-[#9ab4c8]">{roleName[role ?? ""] ?? "Conta"}</span></span>
           <ChevronRight className="h-4 w-4 text-slate-400"/>
-        </div>
+        </Link>
         <button onClick={logout} disabled={loggingOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-300 hover:bg-white/10">
           <LogOut className="h-4 w-4" /> {loggingOut ? "Saindo..." : "Sair"}
         </button>

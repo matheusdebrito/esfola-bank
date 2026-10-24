@@ -10,13 +10,17 @@ export const userCreateSchema = z.object({
 export const userUpdateSchema = z
   .object({
     name: z.string().min(2).max(255).optional(),
-    email: z.string().email("E-mail inválido").max(255).optional(),
     role: z.enum(["ADMIN", "MANAGER", "OPERATOR", "AUDITOR"]).optional(),
     active: z.boolean().optional(),
   })
+  .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: "Pelo menos um campo deve ser informado",
   });
+
+export const ownProfileSchema = z.object({
+  name: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres").max(255),
+}).strict();
 
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, "Senha atual é obrigatória"),
@@ -27,6 +31,7 @@ export const passwordResetSchema = z.object({
   newPassword: z.string().min(6, "Nova senha deve ter ao menos 6 caracteres").max(128),
 });
 
+export type OwnProfileInput = z.infer<typeof ownProfileSchema>;
 export type UserCreateInput = z.infer<typeof userCreateSchema>;
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;

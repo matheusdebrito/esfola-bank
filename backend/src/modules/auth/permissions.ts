@@ -30,6 +30,7 @@ export const PERMISSIONS = {
   USER_CREATE: "users:create",
   USER_UPDATE: "users:update",
   USER_STATUS_CHANGE: "users:status_change",
+  USER_DELETE: "users:delete",
   PERMISSION_MANAGE: "permissions:manage",
   // Auditoria
   AUDIT_READ: "audit:read",

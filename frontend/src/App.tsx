@@ -18,6 +18,7 @@ import InstallmentsPage from "@/pages/InstallmentsPage";
 import DefaultsPage from "@/pages/DefaultsPage";
 import AuditPage from "@/pages/AuditPage";
 import UsersPage from "@/pages/UsersPage";
+import ProfilePage from "@/pages/ProfilePage";
 import FinancialPoliciesPage from "@/pages/FinancialPoliciesPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="installments" element={<InstallmentsPage />} />
               <Route path="defaults" element={<DefaultsPage />} />
               <Route path="audit" element={<AuditPage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="financial-policies" element={<FinancialPoliciesPage />} />
             </Route>

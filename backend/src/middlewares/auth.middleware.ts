@@ -54,8 +54,8 @@ export function optionalAuthenticate(req: AuthRequest, _res: Response, next: Nex
 export async function loadFreshUser(req: AuthRequest, _res: Response, next: NextFunction): Promise<void> {
   if (!req.user) return next();
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, email: true, name: true, role: true, active: true } });
-    if (!user || !user.active) {
+    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, email: true, name: true, role: true, active: true, deletedAt: true } });
+    if (!user || !user.active || user.deletedAt) {
       return next(new UnauthorizedError("Usuário inativo ou não encontrado", "USER_INACTIVE"));
     }
     req.user = { id: user.id, email: user.email, name: user.name, role: user.role };

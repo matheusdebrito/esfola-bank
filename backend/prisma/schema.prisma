@@ -102,6 +102,7 @@ enum AuditAction {
   USER_CREATE
   USER_UPDATE
   USER_STATUS_CHANGE
+  USER_DELETE
   PERMISSION_CHANGE
   REPORT_EXPORT
   DOCUMENT_ACCESS
@@ -124,6 +125,7 @@ model User {
   passwordHash  String   @db.VarChar(255)
   role          UserRole @default(OPERATOR)
   active        Boolean  @default(true)
+  deletedAt     DateTime? @db.Timestamptz
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -139,6 +141,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([active])
+  @@index([deletedAt])
 }
 
 model RefreshToken {
