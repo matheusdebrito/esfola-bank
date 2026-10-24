@@ -3,6 +3,8 @@ import { asyncHandler } from "../../middlewares/error.middleware";
 import { usersService } from "./users.service";
 import {
   userCreateSchema,
+  ownProfileSchema,
+  type OwnProfileInput,
   userUpdateSchema,
   passwordChangeSchema,
   passwordResetSchema,
@@ -41,6 +43,17 @@ export const usersController = {
     res.json({ error: false, message: "Usuário atualizado com sucesso", data: { user } });
   }),
 
+  updateOwnProfile: asyncHandler(async (req: Request, res: Response) => {
+    const input = ownProfileSchema.parse(req.body) as OwnProfileInput;
+    const actor = (req as AuthRequest).user!;
+    const user = await usersService.updateOwnProfile(actor.id, input, req.ip, req.get("user-agent"));
+    res.json({ error: false, message: "Perfil atualizado", data: { user } });
+  }),
+  delete: asyncHandler(async (req: Request, res: Response) => {
+    const actor = (req as AuthRequest).user!;
+    const result = await usersService.delete(req.params.id, actor.id, req.ip, req.get("user-agent"));
+    res.json({ error: false, message: result.message });
+  }),
   changePassword: asyncHandler(async (req: Request, res: Response) => {
     const input = passwordChangeSchema.parse(req.body) as PasswordChangeInput;
     const authReq = req as AuthRequest;
