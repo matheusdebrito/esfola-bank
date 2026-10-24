@@ -64,8 +64,9 @@ export async function getVisualCashFlow() {
   const history = new Map(rows.map(r => [r.month, {
     incoming: Math.round(Number(r.incoming) * 100), outgoing: Math.round(Number(r.outgoing) * 100),
   }]));
-  const currentMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
-  const [year, month] = currentMonth.split("-").map(Number);
+  const currentParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).formatToParts(new Date());
+  const year = Number(currentParts.find(part => part.type === "year")?.value);
+  const month = Number(currentParts.find(part => part.type === "month")?.value);
   const months = Array.from({ length: 6 }, (_, index) => {
     const d = new Date(Date.UTC(year, month - 6 + index, 1));
     return d.toISOString().slice(0, 7);
