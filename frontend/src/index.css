@@ -76,3 +76,28 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
     transition-duration: .01ms !important;
   }
 }
+
+/* Barra de rolagem discreta da navegação navy: Firefox e navegadores WebKit. */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(144, 190, 221, .48) transparent;
+}
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 7px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 10px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(144, 190, 221, .38);
+  border-radius: 999px;
+  border: 2px solid #06263a;
+}
+.sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(144, 190, 221, .75);
+}
+@media (min-width: 1024px) {
+  .sidebar-scrollbar { scrollbar-gutter: stable; }
+}
