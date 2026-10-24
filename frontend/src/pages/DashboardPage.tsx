@@ -153,7 +153,7 @@ export default function DashboardPage() {
             <Input aria-label="Data inicial" type="date" value={customFrom} onChange={event => setCustomFrom(event.target.value)} className="w-full sm:w-36" />
             <Input aria-label="Data final" type="date" min={customFrom || undefined} value={customTo} onChange={event => setCustomTo(event.target.value)} className="w-full sm:w-36" />
           </>}
-          {can("loans:create") && <Link to="/loans?new=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:h-10">
+          {can("loans:create") && <Link to="/loans?new=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary lg:hidden px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:h-10">
             <Plus className="h-4 w-4" aria-hidden /> Novo empréstimo
           </Link>}
         </div>
