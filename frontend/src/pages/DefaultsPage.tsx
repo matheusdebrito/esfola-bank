@@ -60,7 +60,7 @@ export default function DefaultsPage() {
     { key: "actions", label: "", render: (_v: unknown, row: Installment) => (
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => navigate("/loans/" + row.loanId)}>Abrir contrato <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
-        <Button size="sm" variant="secondary" title={row.clientPhone ? "Enviar mensagem de cobrança" : "Cliente sem telefone cadastrado"} disabled={!buildWhatsappUrl(row)}
+        <Button size="sm" variant="whatsapp" title={row.clientPhone ? "Enviar mensagem de cobrança" : "Cliente sem telefone cadastrado"} disabled={!buildWhatsappUrl(row)}
           onClick={() => { const url = buildWhatsappUrl(row); if (url) window.open(url, "_blank", "noopener,noreferrer"); }}>
           <MessageCircle className="mr-1 h-3.5 w-3.5" /> WhatsApp
         </Button>
@@ -113,7 +113,7 @@ export default function DefaultsPage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" className="min-w-0 flex-1" onClick={() => navigate("/loans/" + row.loanId)}>Contrato <ArrowRight className="ml-1 h-4 w-4"/></Button>
-              <Button size="sm" variant="secondary" className="min-w-0 flex-1" disabled={!buildWhatsappUrl(row)}
+              <Button size="sm" variant="whatsapp" className="min-w-0 flex-1" disabled={!buildWhatsappUrl(row)}
                 title={row.clientPhone ? "Enviar cobrança" : "Cliente sem telefone cadastrado"}
                 onClick={() => { const url = buildWhatsappUrl(row); if (url) window.open(url, "_blank", "noopener,noreferrer"); }}>
                 <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
