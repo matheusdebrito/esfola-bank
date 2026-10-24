@@ -37,6 +37,8 @@ export default function PaymentsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { can } = useAuth();
+  // Dependência booleana estável: o callback can() é recriado a cada render.
+  const canRegisterPayment = can("payments:register");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -72,7 +74,7 @@ export default function PaymentsPage() {
   const [open, setOpen] = useState(false);
   const [urlParams, setUrlParams] = useSearchParams();
   useEffect(() => {
-    if (urlParams.get("new") === "1" && can("payments:register")) {
+    if (urlParams.get("new") === "1" && canRegisterPayment) {
       const preferredLoanId = urlParams.get("loanId");
       if (preferredLoanId) {
         setForm(current => ({ ...current, loanId: preferredLoanId }));
@@ -85,7 +87,7 @@ export default function PaymentsPage() {
         return next;
       }, { replace: true });
     }
-  }, [urlParams, setUrlParams, can]);
+  }, [urlParams, setUrlParams, canRegisterPayment]);
   const [form, setForm] = useState(emptyForm());
   const [selectedInstallments, setSelectedInstallments] = useState<Set<string>>(new Set());
 

@@ -49,6 +49,8 @@ export default function LoansPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { can } = useAuth();
+  // Dependência booleana estável: o callback can() é recriado a cada render.
+  const canCreateLoan = can("loans:create");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -98,11 +100,11 @@ export default function LoansPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (urlParams.get("new") === "1" && can("loans:create")) {
+    if (urlParams.get("new") === "1" && canCreateLoan) {
       setOpen(true);
       setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
     }
-  }, [urlParams, setUrlParams, can]);
+  }, [urlParams, setUrlParams, canCreateLoan]);
 
   useEffect(() => {
     if (form.policyId || !policies?.length) return;
