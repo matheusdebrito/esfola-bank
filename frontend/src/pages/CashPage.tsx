@@ -234,7 +234,7 @@ export default function CashPage() {
         </>}
     </Card>
 
-    <Dialog open={open !== null} onOpenChange={flag => { if (!flag && !register.isPending) setOpen(null); }}>
+    <Dialog size="sm" open={open !== null} onOpenChange={flag => { if (!flag && !register.isPending) setOpen(null); }}>
       <DialogHeader><DialogTitle>{open === "CONTRIBUTION" ? "Adicionar dinheiro ao caixa" : open === "WITHDRAWAL" ? "Retirar dinheiro do caixa" : "Registrar despesa"}</DialogTitle>
         <DialogDescription>O lançamento será registrado no histórico do caixa.</DialogDescription></DialogHeader>
       <form onSubmit={submit} className="mt-5 space-y-4">
