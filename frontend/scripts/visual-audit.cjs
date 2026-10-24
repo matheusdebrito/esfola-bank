@@ -91,7 +91,7 @@ const raster=new Set(cases.map(c=>c.name));
         validation.disabledWhenMismatch=await submit.isDisabled();
       }
       if(c.route==="/login"){
-        const logo=page.locator('img[src="/logo-nova.jpg"]').first();
+        const logo=page.locator('img[src="/logo-nova.jpg"]:visible').first();
         const rect=await logo.boundingBox();
         const frame=await logo.locator("..").boundingBox();
         validation.logoFrameSize=frame?.width||0;
