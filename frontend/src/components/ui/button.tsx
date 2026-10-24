@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?: "default" | "destructive" | "outline" | "secondary" | "whatsapp" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
 }
 const variants: Record<string, string> = {
@@ -10,6 +10,7 @@ const variants: Record<string, string> = {
   destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
   outline: "border border-border bg-card text-foreground hover:border-primary/20 hover:bg-accent",
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/75",
+  whatsapp: "bg-[#16a34a] text-white shadow-sm hover:bg-[#15803d] focus-visible:ring-[#16a34a] disabled:bg-[#16a34a] disabled:text-white",
   ghost: "text-foreground hover:bg-accent",
   link: "text-primary underline-offset-4 hover:underline",
 };
