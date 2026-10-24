@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pagination } from "@/components/Pagination";
+import { Pagination } from "@/components/Pagination";
 import { Pencil, Plus, Trash2, UsersRound, ShieldCheck } from "lucide-react";
 
 type UserRow = { id: string; name: string; email: string; role: string; active: boolean; createdAt: string };
