@@ -25,10 +25,10 @@ type CashFlow = { initialized: boolean; months: CashMonth[] };
 type LoanStatus = { current: number; soon: number; overdue: number; total: number; activePrincipal: number };
 type Movement = { id: string; type: string; amount: number; description: string; date: string; reversed: boolean };
 const cards: { label: string; hint: string; color: string; iconBg: string; iconColor: string; Icon: LucideIcon }[] = [
-  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "from-[#e6f9f1] to-[#f4fffa] border-[#d0f0e2]", iconBg: "bg-[#d4f6e4]", iconColor: "text-[#0db86d]", Icon: Wallet },
-  { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "from-[#eaf4ff] to-[#f5faff] border-[#d8e9ff]", iconBg: "bg-[#dfedff]", iconColor: "text-[#1164e5]", Icon: Coins },
-  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "from-[#fff6e3] to-[#fffbf1] border-[#f6e9ce]", iconBg: "bg-[#fff0c7]", iconColor: "text-[#f0a400]", Icon: TrendingUp },
-  { label: "Em atraso", hint: "Parcelas vencidas", color: "from-[#fff0f0] to-[#fff9f9] border-[#ffdddd]", iconBg: "bg-[#ffe6e6]", iconColor: "text-[#f03030]", Icon: CircleAlert },
+  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "from-[#EFF7F1] to-[#FBFDF9] border-[#DAE7DE]", iconBg: "bg-[#d4f6e4]", iconColor: "text-[#0db86d]", Icon: Wallet },
+  { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "from-[#F5EBD5] to-[#FFFDF7] border-[#E8D4A8]", iconBg: "bg-[#EED9AA]", iconColor: "text-[#8B621A]", Icon: Coins },
+  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "from-[#F8F0E0] to-[#FFFCF6] border-[#EADBBD]", iconBg: "bg-[#EFE1C3]", iconColor: "text-[#9F7425]", Icon: TrendingUp },
+  { label: "Em atraso", hint: "Parcelas vencidas", color: "from-[#F9EDEC] to-[#FFFAF9] border-[#EDD8D5]", iconBg: "bg-[#ffe6e6]", iconColor: "text-[#f03030]", Icon: CircleAlert },
 ];
 const periods = [
   { value: "30d", label: "Últimos 30 dias" },
@@ -72,7 +72,7 @@ function waUrl(row: Installment): string | null {
 function CardTitle({ children, href }: { children: React.ReactNode; href?: string }) {
   return <div className="mb-4 flex items-center justify-between gap-2">
     <h2 className="text-[15px] font-bold tracking-tight text-[#111e33]">{children}</h2>
-    {href && <Link to={href} className="shrink-0 text-xs font-semibold text-[#0869e6] hover:underline">Ver todos</Link>}
+    {href && <Link to={href} className="shrink-0 text-xs font-semibold text-[#80601F] hover:underline">Ver todos</Link>}
   </div>;
 }
 function Empty({ children }: { children: React.ReactNode }) {
@@ -88,7 +88,7 @@ function Metric({ index, value, subtitle }: { index: number; value: string; subt
       </span>
       <div className="min-w-0 flex-1">
         <p className={"text-[11px] font-medium " + (index === 3 ? "text-red-600" : "text-slate-700")}>{info.label}</p>
-        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#07a05a]" : index === 1 ? "text-[#0645a9]" : index === 3 ? "text-red-600" : "text-slate-950")}>{value}</p>
+        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#07a05a]" : index === 1 ? "text-[#664817]" : index === 3 ? "text-red-600" : "text-slate-950")}>{value}</p>
         <p className="mt-1.5 text-[11px] leading-snug text-slate-600">{subtitle ?? info.hint}</p>
       </div>
     </div>
@@ -99,7 +99,7 @@ function DetailRow({ name, amount, sub, href, accent = "rose", phoneUrl }: {
 }) {
   const navigate = useNavigate();
   return <div className="flex min-w-0 items-center gap-2.5 border-b border-slate-100 py-2.5 last:border-b-0">
-    <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold " + (accent === "rose" ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-700")}>{initials(name)}</span>
+    <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold " + (accent === "rose" ? "bg-rose-100 text-rose-600" : "bg-[#F4E6C9] text-[#74551C]")}>{initials(name)}</span>
     <button onClick={() => navigate(href)} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
       <p className="truncate text-xs font-semibold text-slate-800" title={name}>{name}</p>
       <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>
@@ -107,11 +107,11 @@ function DetailRow({ name, amount, sub, href, accent = "rose", phoneUrl }: {
     <strong className="shrink-0 text-[11px] tabular-nums text-slate-800">{brl(amount)}</strong>
     {phoneUrl ? <a href={phoneUrl} target="_blank" rel="noreferrer" className="ml-1 shrink-0 text-emerald-600 hover:text-emerald-700" title={"Contatar " + name + " pelo WhatsApp"} aria-label={"Contatar " + name + " no WhatsApp"}>
       <MessageCircle className="h-5 w-5" />
-    </a> : <Link to={href} className="ml-1 shrink-0 text-blue-500" aria-label={"Abrir contrato de " + name}><ArrowRight className="h-4 w-4"/></Link>}
+    </a> : <Link to={href} className="ml-1 shrink-0 text-[#9D752B]" aria-label={"Abrir contrato de " + name}><ArrowRight className="h-4 w-4"/></Link>}
   </div>;
 }
 const moneyTick = (value: number) => new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 0 }).format(value);
-const colorOf = ["#16bd7b", "#ffc12c", "#ff504e"];
+const colorOf = ["#268566", "#C49A46", "#B64B45"];
 const monthLabel = (month: string) => {
   const i = Number(month.split("-")[1]) - 1;
   return ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][i] ?? month;
@@ -213,16 +213,16 @@ export default function DashboardPage() {
                   <XAxis dataKey="month" tickFormatter={monthLabel} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#69778a" }} dy={9} />
                   <YAxis tickFormatter={moneyTick} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8b95a4" }} />
                   <Tooltip formatter={(v: number, name: string) => [brl(v), name]} labelFormatter={monthLabel} />
-                  <Bar dataKey="incoming" name="Entradas" fill="#24c583" radius={[3, 3, 0, 0]} maxBarSize={25} />
-                  <Bar dataKey="outgoing" name="Saídas" fill="#ff615d" radius={[3, 3, 0, 0]} maxBarSize={25} />
-                  <Line type="monotone" dataKey="balance" name="Saldo do caixa" stroke="#2789ef" strokeWidth={2.5} dot={{ r: 3, fill: "#2789ef" }} activeDot={{ r: 5 }} />
+                  <Bar dataKey="incoming" name="Entradas" fill="#268566" radius={[3, 3, 0, 0]} maxBarSize={25} />
+                  <Bar dataKey="outgoing" name="Saídas" fill="#B64B45" radius={[3, 3, 0, 0]} maxBarSize={25} />
+                  <Line type="monotone" dataKey="balance" name="Saldo do caixa" stroke="#B98C3F" strokeWidth={2.5} dot={{ r: 3, fill: "#2789ef" }} activeDot={{ r: 5 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex flex-wrap justify-center gap-4 text-[11px] text-slate-600">
-              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#24c583]"/>Entradas</span>
-              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#ff615d]"/>Saídas</span>
-              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#2789ef]"/>Saldo do caixa</span>
+              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#268566]"/>Entradas</span>
+              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#B64B45]"/>Saídas</span>
+              <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#B98C3F]"/>Saldo do caixa</span>
             </div>
           </> : hasFinance ? <Empty>{finance?.initialized === false ? "Inicialize o caixa para visualizar a evolução financeira." : "Carregando dados financeiros..."}</Empty>
           : <Empty>Dados financeiros disponíveis apenas para perfis autorizados.</Empty>}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
                 {m.type === "PAYMENT" || m.type === "CONTRIBUTION" ? <ArrowDownLeft className="h-4 w-4"/> : <ArrowUpRight className="h-4 w-4"/>}
               </span>
               <div className="min-w-0 flex-1">
-                <p className={"text-xs font-bold tabular-nums " + (m.reversed ? "text-slate-400 line-through" : m.type === "PAYMENT" || m.type === "CONTRIBUTION" ? "text-[#00a862]" : "text-red-500")}>
+                <p className={"text-xs font-bold tabular-nums " + (m.reversed ? "text-slate-400 line-through" : m.type === "PAYMENT" || m.type === "CONTRIBUTION" ? "text-[#16815A]" : "text-red-500")}>
                   {(m.type === "PAYMENT" || m.type === "CONTRIBUTION" ? "+ " : "− ") + brl(m.amount)}
                 </p>
                 <p className="truncate text-[11px] text-slate-500" title={m.description}>{m.description}{m.reversed ? " · Estornado" : ""}</p>
