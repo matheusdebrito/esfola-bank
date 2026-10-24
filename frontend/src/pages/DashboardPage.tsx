@@ -38,8 +38,9 @@ const periods = [
   { value: "custom", label: "Personalizado" },
 ];
 function rangeFor(period: string, from: string, to: string) {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" })
-    .format(new Date());
+  const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const part = (name: string) => dateParts.find(item => item.type === name)?.value ?? "";
+  const today = [part("year"), part("month"), part("day")].join("-");
   const start = (d: string) => new Date(d + "T00:00:00-03:00").toISOString();
   const end = (d: string) => new Date(d + "T23:59:59.999-03:00").toISOString();
   const shift = (days: number) => {
