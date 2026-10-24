@@ -57,6 +57,35 @@ describe("usuários (integração — requer banco de teste)", () => {
     expect(res.body.data.user.passwordHash).toBeUndefined();
   });
 
+  it("administrador redefine senha de outro usuario, revoga sessoes e preserva o email", async () => {
+    if (!app) return;
+    const operator = await prisma.user.findUnique({ where: { email: "operador@emprestimo.test" } });
+    const oldHash = operator.passwordHash;
+    const oldLogin = await request(app).post("/api/v1/auth/login")
+      .send({ email: operator.email, password: "Operador1234" }).expect(200);
+    const oldCookies = cookieArray(oldLogin);
+    await request(app).post("/api/v1/users/" + operator.id + "/reset-password")
+      .set("Cookie", getCookies()).send({ newPassword: "NovaSenhaSegura123!" }).expect(200);
+    const changed = await prisma.user.findUnique({ where: { id: operator.id } });
+    expect(changed.passwordHash).not.toBe(oldHash);
+    expect(changed.email).toBe(operator.email);
+    expect((await prisma.refreshToken.count({ where: { userId: operator.id, revokedAt: null } }))).toBe(0);
+    await request(app).post("/api/v1/auth/login")
+      .send({ email: operator.email, password: "Operador1234" }).expect(401);
+    await request(app).post("/api/v1/auth/login")
+      .send({ email: operator.email, password: "NovaSenhaSegura123!" }).expect(200);
+    const audited = await prisma.auditLog.findMany({ where: { action: "PASSWORD_RESET", entityId: operator.id } });
+    expect(audited).toHaveLength(1);
+    expect(JSON.stringify(audited)).not.toContain("NovaSenhaSegura123!");
+    const admin = await prisma.user.findUnique({ where: { email: "admin@emprestimo.test" } });
+    await request(app).post("/api/v1/users/" + admin.id + "/reset-password")
+      .set("Cookie", getCookies()).send({ newPassword: "OutraSenha123!" }).expect(403);
+    await request(app).post("/api/v1/users/" + operator.id + "/reset-password")
+      .set("Cookie", getCookies()).send({ newPassword: "123" }).expect(400);
+    await request(app).post("/api/v1/users/" + operator.id + "/reset-password")
+      .set("Cookie", oldCookies).send({ newPassword: "OutraSenha123!" }).expect(403);
+  });
+
   it("deve listar usuários com paginação", async () => {
     if (!app) return;
     const res = await request(app)

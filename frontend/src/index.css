@@ -4,31 +4,32 @@
 
 @layer base {
   :root {
-    --background: 216 27% 97%;
-    --foreground: 217 37% 16%;
+    /* Esfola Bank: marinho profundo + ouro antigo + superfícies marfim. */
+    --background: 43 41% 97%;
+    --foreground: 217 46% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 217 37% 16%;
+    --card-foreground: 217 46% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 37% 16%;
-    --primary: 216 78% 42%;
+    --popover-foreground: 217 46% 15%;
+    --primary: 216 49% 15%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 28% 94%;
-    --secondary-foreground: 217 37% 19%;
-    --muted: 214 24% 95%;
-    --muted-foreground: 215 14% 44%;
-    --accent: 215 29% 94%;
-    --accent-foreground: 216 78% 32%;
-    --destructive: 0 70% 45%;
+    --secondary: 43 49% 91%;
+    --secondary-foreground: 217 46% 17%;
+    --muted: 42 31% 95%;
+    --muted-foreground: 214 13% 40%;
+    --accent: 41 58% 92%;
+    --accent-foreground: 217 46% 16%;
+    --destructive: 4 59% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 24% 90%;
-    --input: 215 24% 88%;
-    --ring: 216 78% 42%;
+    --border: 41 21% 87%;
+    --input: 41 21% 83%;
+    --ring: 39 54% 46%;
     --radius: .875rem;
-    --chart-1: 218 77% 44%;
-    --chart-2: 159 77% 36%;
-    --chart-3: 30 82% 50%;
-    --chart-4: 256 56% 53%;
-    --chart-5: 343 75% 49%;
+    --chart-1: 39 64% 55%;
+    --chart-2: 157 55% 33%;
+    --chart-3: 216 49% 23%;
+    --chart-4: 4 59% 40%;
+    --chart-5: 40 30% 42%;
   }
   .dark {
     --background: 221 29% 9%;
@@ -80,7 +81,7 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 /* Barra de rolagem discreta da navegação navy: Firefox e navegadores WebKit. */
 .sidebar-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(144, 190, 221, .48) transparent;
+  scrollbar-color: rgba(220, 185, 108, .48) transparent;
 }
 .sidebar-scrollbar::-webkit-scrollbar {
   width: 7px;
@@ -90,14 +91,19 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   margin-block: 10px;
 }
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(144, 190, 221, .38);
+  background-color: rgba(220, 185, 108, .38);
   border-radius: 999px;
-  border: 2px solid #06263a;
+  border: 2px solid #14243B;
 }
 .sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(144, 190, 221, .75);
+  background-color: rgba(220, 185, 108, .75);
 }
 @media (min-width: 1024px) {
   .sidebar-scrollbar { scrollbar-gutter: stable; }
 }
+
+/* Estados da identidade: dourado decorativo, sempre com texto escuro. */
+.brand-gold { color: #D6A444; }
+.brand-gold-bg { background-color: #D6A444; color: #14243B; }
+.brand-gold-bg:hover { background-color: #E7BE6D; }
