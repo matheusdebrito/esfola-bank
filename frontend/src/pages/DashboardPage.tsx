@@ -25,10 +25,10 @@ type CashFlow = { initialized: boolean; months: CashMonth[] };
 type LoanStatus = { current: number; soon: number; overdue: number; total: number; activePrincipal: number };
 type Movement = { id: string; type: string; amount: number; description: string; date: string; reversed: boolean };
 const cards: { label: string; hint: string; color: string; iconBg: string; iconColor: string; Icon: LucideIcon }[] = [
-  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "from-[#EFF7F1] to-[#FBFDF9] border-[#DAE7DE]", iconBg: "bg-[#d4f6e4]", iconColor: "text-[#0db86d]", Icon: Wallet },
+  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "from-[#EFF7F1] to-[#FBFDF9] border-[#DAE7DE]", iconBg: "bg-[#d4f6e4]", iconColor: "text-[#18704E]", Icon: Wallet },
   { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "from-[#F5EBD5] to-[#FFFDF7] border-[#E8D4A8]", iconBg: "bg-[#EED9AA]", iconColor: "text-[#8B621A]", Icon: Coins },
   { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "from-[#F8F0E0] to-[#FFFCF6] border-[#EADBBD]", iconBg: "bg-[#EFE1C3]", iconColor: "text-[#9F7425]", Icon: TrendingUp },
-  { label: "Em atraso", hint: "Parcelas vencidas", color: "from-[#F9EDEC] to-[#FFFAF9] border-[#EDD8D5]", iconBg: "bg-[#ffe6e6]", iconColor: "text-[#f03030]", Icon: CircleAlert },
+  { label: "Em atraso", hint: "Parcelas vencidas", color: "from-[#F9EDEC] to-[#FFFAF9] border-[#EDD8D5]", iconBg: "bg-[#ffe6e6]", iconColor: "text-[#B33A38]", Icon: CircleAlert },
 ];
 const periods = [
   { value: "30d", label: "Últimos 30 dias" },
@@ -100,7 +100,7 @@ function DetailRow({ name, amount, sub, href, accent = "rose", phoneUrl }: {
   const navigate = useNavigate();
   return <div className="flex min-w-0 items-center gap-2.5 border-b border-slate-100 py-2.5 last:border-b-0">
     <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold " + (accent === "rose" ? "bg-rose-100 text-rose-600" : "bg-[#F4E6C9] text-[#74551C]")}>{initials(name)}</span>
-    <button onClick={() => navigate(href)} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+    <button onClick={() => navigate(href)} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
       <p className="truncate text-xs font-semibold text-slate-800" title={name}>{name}</p>
       <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>
     </button>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
       {[0, 1, 2, 3].map(x => <div key={x} className="h-32 animate-pulse rounded-xl bg-slate-100" />)}
     </div> : <>
       <section aria-label="Resumo dos indicadores" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {hasFinance ? <Link to="/cash" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+        {hasFinance ? <Link to="/cash" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
           <Metric index={0} value={financeError ? "Indisponível" : finance?.initialized ? brl(finance.availableBalance ?? 0) : "Configurar caixa"} />
         </Link> : <Metric index={0} value="Acesso restrito" subtitle="Disponível à gestão financeira" />}
         <Metric index={1} value={brl(status.activePrincipal)} subtitle={status.total + " empréstimo(s) ativo(s)"} />

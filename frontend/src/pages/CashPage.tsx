@@ -56,7 +56,7 @@ function exportRows(rows: Row[]) {
 }
 function Summary({ title, value, detail, icon: Icon, tone }: { title: string; value: string; detail: string; icon: typeof Wallet; tone: "blue" | "green" | "red" }) {
   return <Card className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-full " + (tone === "green" ? "bg-emerald-50 text-emerald-600" : tone === "red" ? "bg-rose-50 text-rose-500" : "bg-[#F7EBD2] text-[#79591F]")}>
+    <div className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-full " + (tone === "green" ? "bg-emerald-50 text-emerald-600" : tone === "red" ? "bg-rose-50 text-rose-500" : "bg-[#F7EBD2] text-[#765526]")}>
       <Icon className="h-6 w-6" />
     </div>
     <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export default function CashPage() {
   if (!overview.data?.initialized) return <div className="space-y-4">
     <div><h1 className="text-2xl font-bold text-slate-950">Caixa</h1><p className="text-sm text-slate-500">Gerencie o capital disponível para empréstimos.</p></div>
     <Card className="p-6"><p className="mb-4 text-sm text-slate-600">O caixa ainda não foi inicializado. Informe o saldo real de abertura no Financeiro para começar.</p>
-      <Link to="/finance" className="inline-flex h-11 items-center rounded-lg bg-[#14243B] px-4 text-sm font-semibold text-white">Configurar caixa</Link>
+      <Link to="/finance" className="inline-flex h-11 items-center rounded-lg bg-[#292621] px-4 text-sm font-semibold text-white">Configurar caixa</Link>
     </Card>
   </div>;
   const info = overview.data;
@@ -170,8 +170,8 @@ export default function CashPage() {
     <Card className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-4">
-          <button onClick={() => setTab("movements")} className={"border-b-2 px-1 pb-2 text-xs font-semibold " + (tab === "movements" ? "border-[#AF802E] text-[#79591F]" : "border-transparent text-slate-500")}>Movimentações</button>
-          <button onClick={() => setTab("summary")} className={"border-b-2 px-1 pb-2 text-xs font-semibold " + (tab === "summary" ? "border-[#AF802E] text-[#79591F]" : "border-transparent text-slate-500")}>Resumo</button>
+          <button onClick={() => setTab("movements")} className={"border-b-2 px-1 pb-2 text-xs font-semibold " + (tab === "movements" ? "border-[#986F39] text-[#765526]" : "border-transparent text-slate-500")}>Movimentações</button>
+          <button onClick={() => setTab("summary")} className={"border-b-2 px-1 pb-2 text-xs font-semibold " + (tab === "summary" ? "border-[#986F39] text-[#765526]" : "border-transparent text-slate-500")}>Resumo</button>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Select value={type} onValueChange={v => { setType(v); setPage(1); }} aria-label="Tipo de movimentação" className="col-span-2 h-9 w-full text-xs sm:w-[160px]">
@@ -203,7 +203,7 @@ export default function CashPage() {
         <>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] border-collapse text-left text-xs">
-              <thead><tr className="bg-[#f3f6fa] text-[11px] font-semibold text-[#3c4656]">
+              <thead><tr className="bg-[#F2EFE9] text-[11px] font-semibold text-[#4B443A]">
                 {["Data", "Tipo", "Descrição", "Valor", "Saldo após", "Usuário", "Ações"].map(v => <th key={v} className="px-3 py-3">{v}</th>)}
               </tr></thead>
               <tbody>{list.map(row => <tr key={row.id} className="border-b border-slate-100 last:border-0">
@@ -213,7 +213,7 @@ export default function CashPage() {
                 <td className={"whitespace-nowrap px-3 py-3 font-semibold tabular-nums " + (row.reversed ? "text-slate-400 line-through" : isIncoming(row) ? "text-emerald-600" : "text-red-500")}>{isIncoming(row) ? "+ " : "− "}{brl(row.amount)}</td>
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-slate-700">{row.balanceAfter === undefined ? "—" : brl(row.balanceAfter)}</td>
                 <td className="px-3 py-3 text-slate-600">{row.userName ?? "—"}</td>
-                <td className="px-3 py-3">{mayWrite && !row.reversed && row.type !== "PAYMENT" ? <button onClick={() => onReverse(row)} disabled={reverse.isPending} className="text-xs font-semibold text-[#79591F] hover:underline">Estornar</button> : "—"}</td>
+                <td className="px-3 py-3">{mayWrite && !row.reversed && row.type !== "PAYMENT" ? <button onClick={() => onReverse(row)} disabled={reverse.isPending} className="text-xs font-semibold text-[#765526] hover:underline">Estornar</button> : "—"}</td>
               </tr>)}</tbody>
             </table>
           </div>
@@ -224,7 +224,7 @@ export default function CashPage() {
               <p className="break-words text-xs text-slate-700">{row.description}</p>
               <p className="text-[11px] text-slate-500">{dateTimeBr(row.date)} · {row.userName ?? "Sistema"}</p>
               <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500"><span>Saldo após: {row.balanceAfter === undefined ? "—" : brl(row.balanceAfter)}</span>
-                {mayWrite && !row.reversed && row.type !== "PAYMENT" && <button className="font-semibold text-[#79591F]" disabled={reverse.isPending} onClick={() => onReverse(row)}>Estornar</button>}</div>
+                {mayWrite && !row.reversed && row.type !== "PAYMENT" && <button className="font-semibold text-[#765526]" disabled={reverse.isPending} onClick={() => onReverse(row)}>Estornar</button>}</div>
             </div>)}
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
@@ -248,7 +248,7 @@ export default function CashPage() {
         </div>
         <DialogFooter><Button variant="outline" onClick={() => setOpen(null)} disabled={register.isPending}>Cancelar</Button>
           <button type="submit" disabled={register.isPending || !parseMoney(amount) || description.trim().length < 3}
-            className={"inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-55 " +
+            className={"inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-55 " +
               (open === "CONTRIBUTION" ? "bg-[#237E5D] hover:bg-[#1B684D]" : "bg-[#B64B45] hover:bg-[#A43D38]")}>
             {register.isPending ? "Registrando..." : open === "CONTRIBUTION" ? "Adicionar" : "Confirmar retirada"}
           </button>

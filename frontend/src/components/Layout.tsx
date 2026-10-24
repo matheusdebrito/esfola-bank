@@ -33,13 +33,13 @@ const allowed = (item: NavItem, role?: string) => !item.roles || !!role && item.
 const roleName: Record<string, string> = { ADMIN: "Administrador", MANAGER: "Gerente", AUDITOR: "Auditor", OPERATOR: "Operador" };
 
 function Brand({ small = false }: { small?: boolean }) {
-  return <Link to="/dashboard" className="flex min-w-0 items-center gap-2 rounded-lg text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" aria-label="Esfola Bank — dashboard">
+  return <Link to="/dashboard" className="flex min-w-0 items-center gap-2 rounded-lg text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" aria-label="Esfola Bank — dashboard">
     <span className="flex h-10 w-10 shrink-0 items-end justify-center text-white">
       <img src="/favicon-corvo.svg" alt="" className="h-10 w-10 rounded-xl object-cover" aria-hidden />
     </span>
     <span className={cn("min-w-0 leading-[.94] tracking-[-.045em]", small ? "text-[15px]" : "text-[20px]")}>
       <strong className="block text-white">ESFOLA</strong>
-      <strong className="mt-0.5 block text-[#E6C06F]">BANK</strong>
+      <strong className="mt-0.5 block text-[#E4BE7A]">BANK</strong>
     </span>
   </Link>;
 }
@@ -73,20 +73,20 @@ function QuickSearch({ className = "" }: { className?: string }) {
     ...(data?.loans ?? []).map(item => ({ title: item.code + (item.clientName ? " · " + item.clientName : ""), type: "Empréstimo", to: "/loans/" + item.id })),
   ];
   return <div className={"relative min-w-0 " + className}>
-    <Search className="pointer-events-none absolute left-3 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-[#607185]" aria-hidden />
+    <Search className="pointer-events-none absolute left-3 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-[#756E63]" aria-hidden />
     <input type="search" aria-label="Buscar clientes ou empréstimos"
       placeholder="Buscar cliente, empréstimo ou contrato..." value={term}
       onChange={e => setTerm(e.target.value)} onFocus={() => setFocused(true)}
       onBlur={() => setTimeout(() => setFocused(false), 180)}
       onKeyDown={e => { if (e.key === "Escape") setFocused(false); if (e.key === "Enter" && results[0]) { navigate(results[0].to); setTerm(""); setFocused(false); } }}
-      className="h-10 w-full rounded-lg border border-transparent bg-[#f0f3f6] pl-10 pr-3 text-xs text-[#1c324a] outline-none placeholder:text-[#96a1b0] focus:border-blue-200 focus:ring-2 focus:ring-blue-100" />
+      className="h-10 w-full rounded-lg border border-transparent bg-[#F2EFE9] pl-10 pr-3 text-xs text-[#302C27] outline-none placeholder:text-[#938A7D] focus:border-amber-400 focus:ring-2 focus:ring-amber-100" />
     {focused && debounced.length >= 2 && <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
       {results.length ? results.map(x => <button key={x.to} onMouseDown={e => e.preventDefault()}
         onClick={() => { navigate(x.to); setFocused(false); setTerm(""); }}
-        className="flex w-full flex-col rounded-lg px-3 py-2 text-left hover:bg-blue-50">
+        className="flex w-full flex-col rounded-lg px-3 py-2 text-left hover:bg-amber-50">
         <span className="truncate text-xs font-semibold text-slate-900">{x.title}</span>
-        <span className="text-[10px] text-slate-500">{x.type}</span>
-      </button>) : <p className="p-3 text-xs text-slate-500">{isError ? "Não foi possível buscar agora." : "Nenhum registro encontrado."}</p>}
+        <span className="text-[10px] text-stone-500">{x.type}</span>
+      </button>) : <p className="p-3 text-xs text-stone-500">{isError ? "Não foi possível buscar agora." : "Nenhum registro encontrado."}</p>}
     </div>}
   </div>;
 }
@@ -101,7 +101,7 @@ function Notices() {
   const count = (data?.overdueInstallments ?? 0) + (data?.dueToday ?? 0);
   return <div className="relative">
     <button type="button" onClick={() => setOpen(!open)} aria-label="Notificações da operação" aria-expanded={open}
-      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 lg:text-slate-600 lg:hover:bg-slate-100">
+      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-amber-500 lg:text-stone-600 lg:hover:bg-stone-100">
       <Bell className="h-5 w-5" />
       {count > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
     </button>
@@ -111,7 +111,7 @@ function Notices() {
         <span>Parcelas vencidas</span><strong className="text-red-600">{data?.overdueInstallments ?? 0}</strong>
       </Link>
       <Link onClick={() => setOpen(false)} to="/installments" className="flex items-center justify-between py-2 text-xs text-slate-700">
-        <span>Vencimentos de hoje</span><strong className="text-blue-600">{data?.dueToday ?? 0}</strong>
+        <span>Vencimentos de hoje</span><strong className="text-[#85602E]">{data?.dueToday ?? 0}</strong>
       </Link>
     </div>}
   </div>;
@@ -147,12 +147,12 @@ export default function Layout() {
   function navItem(item: NavItem) {
     const Icon = item.icon;
     return <NavLink key={item.href} to={item.href} onClick={() => setOpen(false)}
-      className={cn("flex min-h-[43px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-400",
-        active(location.pathname, item.href) ? "bg-[#A87A30]/25 text-[#F1D395]" : "text-slate-200/90 hover:bg-white/10 hover:text-white")}
+      className={cn("flex min-h-[43px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-amber-500",
+        active(location.pathname, item.href) ? "bg-[#9A723F]/25 text-[#F3D9A2]" : "text-stone-200/90 hover:bg-white/10 hover:text-white")}
       aria-current={active(location.pathname, item.href) ? "page" : undefined}>
       <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.8} aria-hidden />
       <span className="min-w-0 flex-1">{item.name}</span>
-      {item.href === "/cash" && active(location.pathname, item.href) && <span className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white">CAIXA</span>}
+      {item.href === "/cash" && active(location.pathname, item.href) && <span className="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-semibold text-white">CAIXA</span>}
     </NavLink>;
   }
   const sections = [
@@ -160,32 +160,32 @@ export default function Layout() {
     { title: "ACESSO RÁPIDO", items: secondaryItems },
     { title: "Administração", items: adminItems },
   ];
-  return <div className="flex h-[100dvh] overflow-hidden bg-[#FAF8F3]">
-    {open && <button className="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)}/>}
-    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#14243B] text-white transition-transform lg:static lg:w-[210px] lg:shrink-0 xl:w-[230px]",
+  return <div className="flex h-[100dvh] overflow-hidden bg-[#F7F5F0]">
+    {open && <button className="fixed inset-0 z-40 bg-stone-950/60 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)}/>}
+    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#292621] text-white transition-transform lg:static lg:w-[210px] lg:shrink-0 xl:w-[230px]",
       open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} aria-label="Navegação principal">
       <div className="flex h-[94px] shrink-0 items-center justify-between gap-2 px-4">
         <Brand />
-        <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 lg:hidden" aria-label="Fechar menu"><X className="h-5 w-5"/></button>
+        <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-stone-300 lg:hidden" aria-label="Fechar menu"><X className="h-5 w-5"/></button>
       </div>
       <nav className="sidebar-scrollbar min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-2">
         {sections.map(section => {
           const items = section.items.filter(item => allowed(item, role));
           if (!items.length) return null;
           return <div key={section.title || "nav"} className="space-y-1">
-            {section.title && <div className="px-3 pb-2 pt-2 text-[11px] font-medium text-[#D0B782]">{section.title}</div>}
+            {section.title && <div className="px-3 pb-2 pt-2 text-[11px] font-medium text-[#DAC49C]">{section.title}</div>}
             {items.map(navItem)}
           </div>;
         })}
       </nav>
       <div className="space-y-1 border-t border-white/10 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <Link to="/profile" onClick={() => setOpen(false)} aria-label="Editar meu perfil" title="Meu perfil" className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEDDBA] text-sm font-bold text-[#14243B]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
+        <Link to="/profile" onClick={() => setOpen(false)} aria-label="Editar meu perfil" title="Meu perfil" className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E7D5B5] text-sm font-bold text-[#292621]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
           <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{user?.name ?? "Usuário"}</span>
-            <span className="block text-[11px] text-[#C5BEAD]">{roleName[role ?? ""] ?? "Conta"}</span></span>
-          <ChevronRight className="h-4 w-4 text-slate-400"/>
+            <span className="block text-[11px] text-[#D5CABE]">{roleName[role ?? ""] ?? "Conta"}</span></span>
+          <ChevronRight className="h-4 w-4 text-stone-400"/>
         </Link>
-        <button onClick={logout} disabled={loggingOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-300 hover:bg-white/10">
+        <button onClick={logout} disabled={loggingOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-stone-300 hover:bg-white/10">
           <LogOut className="h-4 w-4" /> {loggingOut ? "Saindo..." : "Sair"}
         </button>
         {logoutError && <p role="alert" className="px-3 text-xs text-red-300">{logoutError}</p>}
@@ -193,7 +193,7 @@ export default function Layout() {
     </aside>
 
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#103e5e] bg-[#14243B] px-3 sm:px-6 lg:border-[#e9eef4] lg:bg-white">
+      <header className="z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#403B34] bg-[#292621] px-3 sm:px-6 lg:border-[#E4DED3] lg:bg-white">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button onClick={() => setOpen(true)} aria-label="Abrir menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10 lg:hidden"><Menu className="h-5 w-5"/></button>
           <div className="lg:hidden"><Brand small/></div>
@@ -201,7 +201,7 @@ export default function Layout() {
         </div>
         <div className="flex items-center gap-2">
           <Notices />
-          {canCreate && <Link to="/loans?new=1" className="hidden h-9 items-center gap-2 rounded-lg bg-[#D6A444] text-[#14243B] px-3 text-xs font-bold hover:bg-[#E7BE6D] lg:inline-flex">
+          {canCreate && <Link to="/loans?new=1" className="hidden h-9 items-center gap-2 rounded-lg bg-[#C29651] text-[#292621] px-3 text-xs font-bold hover:bg-[#D8AD68] lg:inline-flex">
             <Plus className="h-4 w-4"/> Novo empréstimo
           </Link>}
         </div>
@@ -209,20 +209,20 @@ export default function Layout() {
       <main id="main-content" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-5 lg:px-6 lg:pb-7 xl:px-7">
         <div className="mx-auto w-full max-w-[1550px]"><Outlet /></div>
       </main>
-      <nav aria-label="Acesso rápido" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t border-[#e1e8f1] bg-[#14243B] px-1 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-xl lg:hidden">
+      <nav aria-label="Acesso rápido" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t border-[#E4DED3] bg-[#292621] px-1 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-xl lg:hidden">
         {[
           { name: "Início", href: "/dashboard", icon: House },
           { name: "Empréstimos", href: "/loans", icon: BriefcaseBusiness },
-        ].map(item => <NavLink key={item.href} to={item.href} className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,item.href)?"text-[#F1D395]":"text-slate-300")}>
+        ].map(item => <NavLink key={item.href} to={item.href} className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,item.href)?"text-[#F3D9A2]":"text-stone-300")}>
           <item.icon className="h-[19px] w-[19px]"/>{item.name}
         </NavLink>)}
-        <Link to={canCreate ? "/loans?new=1" : "/dashboard"} aria-label={canCreate ? "Novo empréstimo" : "Início"} className="-mt-3 flex h-14 w-14 items-center justify-center justify-self-center rounded-full bg-[#D6A444] text-[#14243B] shadow-[0_3px_16px_rgba(214,164,68,.4)]">
+        <Link to={canCreate ? "/loans?new=1" : "/dashboard"} aria-label={canCreate ? "Novo empréstimo" : "Início"} className="-mt-3 flex h-14 w-14 items-center justify-center justify-self-center rounded-full bg-[#C29651] text-[#292621] shadow-[0_3px_16px_rgba(214,164,68,.4)]">
           <Plus className="h-7 w-7"/>
         </Link>
-        <NavLink to="/clients" className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,"/clients")?"text-[#F1D395]":"text-slate-300")}>
+        <NavLink to="/clients" className={cn("flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px]",active(location.pathname,"/clients")?"text-[#F3D9A2]":"text-stone-300")}>
           <UsersRound className="h-[19px] w-[19px]"/>Clientes
         </NavLink>
-        <button onClick={() => setOpen(true)} className="flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px] text-slate-300">
+        <button onClick={() => setOpen(true)} className="flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px] text-stone-300">
           <MoreHorizontal className="h-[21px] w-[21px]"/>Mais
         </button>
       </nav>
