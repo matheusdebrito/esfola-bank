@@ -24,6 +24,7 @@ export const financeReverseSchema = z.object({
 }).strict();
 
 export const financeListQuerySchema = z.object({
+  type: z.enum(["ALL", "CONTRIBUTION", "WITHDRAWAL", "EXPENSE", "DISBURSEMENT", "PAYMENT"]).optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   page: z.coerce.number().int().positive().default(1),
