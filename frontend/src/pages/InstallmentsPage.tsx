@@ -88,8 +88,8 @@ export function InstallmentActions({ installment }: { installment: Installment }
 
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" variant="outline" onClick={handleCharge}>
-        Cobrar
+      <Button size="sm" variant="whatsapp" onClick={handleCharge}>
+        WhatsApp
       </Button>
       <Button
         size="sm"
