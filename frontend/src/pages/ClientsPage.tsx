@@ -63,6 +63,8 @@ export default function ClientsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { can } = useAuth();
+  // Dependência booleana estável: o callback can() é recriado a cada render.
+  const canCreateClient = can("clients:create");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -90,13 +92,13 @@ export default function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [urlParams, setUrlParams] = useSearchParams();
   useEffect(() => {
-    if (urlParams.get("new") === "1" && can("clients:create")) {
+    if (urlParams.get("new") === "1" && canCreateClient) {
       setEditing(null);
       setForm(emptyForm);
       setOpen(true);
       setUrlParams(previous => { const next = new URLSearchParams(previous); next.delete("new"); return next; }, { replace: true });
     }
-  }, [urlParams, setUrlParams, can]);
+  }, [urlParams, setUrlParams, canCreateClient]);
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [loanDialog, setLoanDialog] = useState<{ client: Client; loans: any[]; loading: boolean } | null>(null);
