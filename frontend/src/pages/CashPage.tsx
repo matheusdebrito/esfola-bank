@@ -160,7 +160,7 @@ export default function CashPage() {
         </button>
       </div>}
     </div>
-    <section aria-label="Resumo do caixa" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <section aria-label="Resumo do caixa" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Summary title="Saldo atual do caixa" value={brl(info.availableBalance ?? 0)} detail="Disponível para novos empréstimos" icon={Wallet} tone="blue"/>
       <Summary title="Total aportado" value={brl(info.contributions ?? 0)} detail="Soma das adições após abertura" icon={ArrowDownLeft as typeof Wallet} tone="green"/>
       <Summary title="Total retirado" value={brl(info.withdrawals ?? 0)} detail="Saídas classificadas como retiradas" icon={ArrowUpRight as typeof Wallet} tone="red"/>
