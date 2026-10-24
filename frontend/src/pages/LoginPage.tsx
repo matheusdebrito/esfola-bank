@@ -36,33 +36,33 @@ export default function LoginPage() {
   }
 
   return <div className="flex min-h-[100dvh] bg-background">
-    <section className="relative hidden w-[48%] flex-col justify-between overflow-hidden bg-[#434C49] px-10 py-12 text-white lg:flex xl:px-16" aria-label="Esfola Bank">
+    <section className="relative hidden w-[48%] flex-col justify-between overflow-hidden bg-[#101114] px-10 py-12 text-white lg:flex xl:px-16" aria-label="Esfola Bank">
       <div className="pointer-events-none absolute -right-36 -top-32 h-[440px] w-[440px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -right-14 -top-10 h-[300px] w-[300px] rounded-full border border-white/10" />
-      <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-[#C7B28B]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-[#CDB78A]/10 blur-3xl" />
       <div className="relative flex flex-wrap items-center gap-5">
-        <div className="relative flex h-[148px] w-[148px] shrink-0 items-center justify-center overflow-hidden rounded-[28px] bg-white shadow-[0_10px_40px_rgba(0,0,0,.22)] ring-2 ring-[#C7B28B]/75" aria-hidden="true">
+        <div className="relative flex h-[148px] w-[148px] shrink-0 items-center justify-center overflow-hidden rounded-[28px] bg-[#222429] shadow-[0_10px_40px_rgba(0,0,0,.22)] ring-2 ring-[#CDB78A]/75" aria-hidden="true">
           <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
         </div>
         <div>
           <p className="text-lg font-bold tracking-tight">Esfola Bank</p>
-          <p className="mt-0.5 text-xs font-medium uppercase tracking-[.17em] text-[#D8E1D9]">Gestão de empréstimos</p>
+          <p className="mt-0.5 text-xs font-medium uppercase tracking-[.17em] text-[#B6B7BA]">Gestão de empréstimos</p>
         </div>
       </div>
       <div className="relative max-w-[560px] space-y-8">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.06] px-4 py-2 text-xs font-semibold text-[#E9EEE9]">
-          <CheckCircle2 className="h-4 w-4 text-[#C7B28B]" /> Sua operação sob controle
+          <CheckCircle2 className="h-4 w-4 text-[#CDB78A]" /> Sua operação sob controle
         </p>
         <h1 className="text-4xl font-semibold leading-[1.13] tracking-tight xl:text-5xl">
           Mais clareza.<br />
-          <span className="text-[#E7D9B8]">Melhores decisões.</span>
+          <span className="text-[#DEC99D]">Melhores decisões.</span>
         </h1>
         <p className="max-w-[430px] text-base leading-relaxed text-[#F7F4EC]">
           Organize empréstimos, acompanhe recebimentos e priorize cobranças em um único lugar.
         </p>
         <div className="grid gap-4 border-t border-white/15 pt-7 sm:grid-cols-2">
-          <div className="flex items-start gap-3"><ChartNoAxesCombined className="mt-1 h-5 w-5 shrink-0 text-[#C7B28B]" /><div><p className="text-sm font-semibold">Visão da carteira</p><p className="mt-1 text-xs leading-relaxed text-[#D8E1D9]">Indicadores claros para o dia a dia.</p></div></div>
-          <div className="flex items-start gap-3"><ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[#C7B28B]" /><div><p className="text-sm font-semibold">Operação organizada</p><p className="mt-1 text-xs leading-relaxed text-[#D8E1D9]">Acessos e registros de movimentações.</p></div></div>
+          <div className="flex items-start gap-3"><ChartNoAxesCombined className="mt-1 h-5 w-5 shrink-0 text-[#CDB78A]" /><div><p className="text-sm font-semibold">Visão da carteira</p><p className="mt-1 text-xs leading-relaxed text-[#B6B7BA]">Indicadores claros para o dia a dia.</p></div></div>
+          <div className="flex items-start gap-3"><ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[#CDB78A]" /><div><p className="text-sm font-semibold">Operação organizada</p><p className="mt-1 text-xs leading-relaxed text-[#B6B7BA]">Acessos e registros de movimentações.</p></div></div>
         </div>
       </div>
       <p className="relative text-xs text-slate-500">Esfola Bank · Acesso restrito</p>
@@ -71,7 +71,7 @@ export default function LoginPage() {
     <main className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-10">
       <div className="w-full max-w-[425px]">
         <div className="mb-8 flex items-center gap-4 lg:hidden">
-          <div className="relative flex h-[116px] w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-2 ring-[#C7B28B]/60" aria-hidden="true">
+          <div className="relative flex h-[116px] w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#222429] shadow-sm ring-2 ring-[#CDB78A]/60" aria-hidden="true">
             <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
           </div>
           <div><p className="text-base font-bold text-foreground">Esfola Bank</p><p className="text-xs text-muted-foreground">Gestão de empréstimos</p></div>
