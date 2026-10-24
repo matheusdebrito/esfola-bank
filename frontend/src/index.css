@@ -4,53 +4,53 @@
 
 @layer base {
   :root {
-    /* Esfola Bank: marinho profundo + ouro antigo + superfícies marfim. */
-    --background: 43 41% 97%;
-    --foreground: 217 46% 15%;
+    /* Esfola Bank: grafite quente, dourado moderado e areia. Sem azul dominante. */
+    --background: 40 28% 97%;
+    --foreground: 36 11% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 217 46% 15%;
+    --card-foreground: 36 11% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 46% 15%;
-    --primary: 216 49% 15%;
+    --popover-foreground: 36 11% 16%;
+    --primary: 36 10% 18%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 43 49% 91%;
-    --secondary-foreground: 217 46% 17%;
-    --muted: 42 31% 95%;
-    --muted-foreground: 214 13% 40%;
-    --accent: 41 58% 92%;
-    --accent-foreground: 217 46% 16%;
+    --secondary: 38 34% 91%;
+    --secondary-foreground: 36 11% 18%;
+    --muted: 40 20% 94%;
+    --muted-foreground: 35 9% 38%;
+    --accent: 39 38% 89%;
+    --accent-foreground: 36 11% 18%;
     --destructive: 4 59% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 41 21% 87%;
-    --input: 41 21% 83%;
-    --ring: 39 54% 46%;
+    --border: 36 17% 85%;
+    --input: 36 17% 82%;
+    --ring: 37 43% 39%;
     --radius: .875rem;
-    --chart-1: 39 64% 55%;
-    --chart-2: 157 55% 33%;
-    --chart-3: 216 49% 23%;
+    --chart-1: 37 48% 45%;
+    --chart-2: 153 45% 34%;
+    --chart-3: 29 15% 33%;
     --chart-4: 4 59% 40%;
-    --chart-5: 40 30% 42%;
+    --chart-5: 35 22% 54%;
   }
   .dark {
-    --background: 221 29% 9%;
-    --foreground: 214 27% 96%;
-    --card: 219 27% 14%;
-    --card-foreground: 214 27% 96%;
-    --popover: 219 27% 14%;
-    --popover-foreground: 214 27% 96%;
-    --primary: 214 89% 65%;
-    --primary-foreground: 220 32% 11%;
-    --secondary: 217 24% 21%;
-    --secondary-foreground: 213 30% 95%;
-    --muted: 217 24% 21%;
-    --muted-foreground: 215 18% 72%;
-    --accent: 216 23% 24%;
-    --accent-foreground: 213 30% 95%;
-    --destructive: 0 64% 49%;
+    --background: 34 12% 11%;
+    --foreground: 39 27% 94%;
+    --card: 35 12% 16%;
+    --card-foreground: 39 27% 94%;
+    --popover: 35 12% 16%;
+    --popover-foreground: 39 27% 94%;
+    --primary: 38 42% 67%;
+    --primary-foreground: 36 12% 12%;
+    --secondary: 35 10% 24%;
+    --secondary-foreground: 39 27% 94%;
+    --muted: 35 10% 24%;
+    --muted-foreground: 36 12% 74%;
+    --accent: 36 16% 27%;
+    --accent-foreground: 39 27% 94%;
+    --destructive: 0 63% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 23% 27%;
-    --input: 217 23% 27%;
-    --ring: 214 89% 65%;
+    --border: 35 10% 30%;
+    --input: 35 10% 30%;
+    --ring: 38 42% 67%;
   }
   * { @apply border-border; }
   body {
@@ -78,10 +78,10 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   }
 }
 
-/* Barra de rolagem discreta da navegação navy: Firefox e navegadores WebKit. */
+/* Barra de rolagem discreta da navegação grafite: Firefox e navegadores WebKit. */
 .sidebar-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(220, 185, 108, .48) transparent;
+  scrollbar-color: rgba(202, 165, 106, .52) transparent;
 }
 .sidebar-scrollbar::-webkit-scrollbar {
   width: 7px;
@@ -91,19 +91,19 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   margin-block: 10px;
 }
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(220, 185, 108, .38);
+  background-color: rgba(202, 165, 106, .42);
   border-radius: 999px;
   border: 2px solid #14243B;
 }
 .sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(220, 185, 108, .75);
+  background-color: rgba(224, 187, 122, .78);
 }
 @media (min-width: 1024px) {
   .sidebar-scrollbar { scrollbar-gutter: stable; }
 }
 
-/* Estados da identidade: dourado decorativo, sempre com texto escuro. */
+/* Dourado reservado a destaques, com contraste alto sobre fundo escuro. */
 .brand-gold { color: #D6A444; }
 .brand-gold-bg { background-color: #D6A444; color: #14243B; }
 .brand-gold-bg:hover { background-color: #E7BE6D; }
