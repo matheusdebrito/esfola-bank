@@ -33,11 +33,11 @@ const allowed = (item: NavItem, role?: string) => !item.roles || !!role && item.
 const roleName: Record<string, string> = { ADMIN: "Administrador", MANAGER: "Gerente", AUDITOR: "Auditor", OPERATOR: "Operador" };
 
 function Brand({ small = false }: { small?: boolean }) {
-  return <Link to="/dashboard" className="flex min-w-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Esfola Bank — dashboard">
-    <img src="/favicon-corvo.svg" alt="" aria-hidden className={cn("shrink-0 rounded-full", small ? "h-9 w-9" : "h-11 w-11")} />
-    <span className={cn("min-w-0 leading-[.94] tracking-[-.045em]", small ? "text-[15px]" : "text-[20px]")}>
-      <strong className="block text-[#F3F0E8]">ESFOLA</strong>
-      <strong className="mt-0.5 block text-[#D6BC88]">BANK</strong>
+  return <Link to="/dashboard" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D5AC61]" aria-label="Esfola Bank — dashboard">
+    <img src="/favicon-corvo.svg" alt="" aria-hidden className={cn("shrink-0 object-contain", small ? "h-8 w-8" : "h-[76px] w-[76px]")} />
+    <span className={cn("min-w-0 text-center leading-[.94] tracking-[-.035em]", small ? "text-[11px]" : "text-[22px]")}>
+      <strong className="block font-serif text-[#EBC77D]">ESFOLA</strong>
+      <strong className="mt-1 block text-[.45em] tracking-[.3em] text-[#D8B470]">BANK</strong>
     </span>
   </Link>;
 }
@@ -146,7 +146,7 @@ export default function Layout() {
     const Icon = item.icon;
     return <NavLink key={item.href} to={item.href} onClick={() => setOpen(false)}
       className={cn("flex min-h-[43px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400",
-        active(location.pathname, item.href) ? "bg-[#BFA66F]/25 text-[#F3F0E8]" : "text-stone-200/90 hover:bg-white/10 hover:text-white")}
+        active(location.pathname, item.href) ? "border-l-2 border-[#D5AC61] bg-[#2E2A22] text-[#F7F2E8]" : "text-stone-200/90 hover:bg-white/10 hover:text-white")}
       aria-current={active(location.pathname, item.href) ? "page" : undefined}>
       <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.8} aria-hidden />
       <span className="min-w-0 flex-1">{item.name}</span>
@@ -160,9 +160,9 @@ export default function Layout() {
   ];
   return <div className="flex h-[100dvh] overflow-hidden bg-[#121416]">
     {open && <button className="fixed inset-0 z-40 bg-stone-950/60 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)}/>}
-    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101114] text-white transition-transform lg:static lg:w-[210px] lg:shrink-0 xl:w-[230px]",
+    <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101114] text-white transition-transform lg:static lg:w-[215px] lg:shrink-0 xl:w-[245px]",
       open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} aria-label="Navegação principal">
-      <div className="flex h-[94px] shrink-0 items-center justify-between gap-2 px-4">
+      <div className="flex h-[150px] shrink-0 items-center justify-center gap-2 px-4">
         <Brand />
         <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-stone-300 lg:hidden" aria-label="Fechar menu"><X className="h-5 w-5"/></button>
       </div>
@@ -178,7 +178,7 @@ export default function Layout() {
       </nav>
       <div className="space-y-1 border-t border-white/10 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         <Link to="/profile" onClick={() => setOpen(false)} aria-label="Editar meu perfil" title="Meu perfil" className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#34373C] text-sm font-bold text-[#101114]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D5AC61] text-sm font-bold text-[#101114]">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
           <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{user?.name ?? "Usuário"}</span>
             <span className="block text-[11px] text-[#D5CABE]">{roleName[role ?? ""] ?? "Conta"}</span></span>
           <ChevronRight className="h-4 w-4 text-stone-400"/>
@@ -199,7 +199,7 @@ export default function Layout() {
         </div>
         <div className="flex items-center gap-2">
           <Notices />
-          {canCreate && <Link to="/loans?new=1" className="hidden h-9 items-center gap-2 rounded-lg bg-[#DCE8DE] text-[#30443B] px-3 text-xs font-bold hover:bg-[#E2D2B5] lg:inline-flex">
+          {canCreate && <Link to="/loans?new=1" className="hidden h-9 items-center gap-2 rounded-lg bg-[#D5AC61] text-[#101114] px-3 text-xs font-bold hover:bg-[#E2D2B5] lg:inline-flex">
             <Plus className="h-4 w-4"/> Novo empréstimo
           </Link>}
         </div>
