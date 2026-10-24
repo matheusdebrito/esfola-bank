@@ -270,9 +270,9 @@ export default function FinancePage() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo de movimentação</Label>
-          <Select value={kind} onValueChange={v => { setKind(v as FinanceEntryType); setLoanId(""); setAmount(""); }}>
+          <Select value={kind} onValueChange={v => { setKind(v as FinanceEntryType); setLoanId(""); setAmount(""); setDescription(""); }}>
             <option value="CONTRIBUTION">Aporte de capital</option>
-            <option value="WITHDRAWAL">Retirada de sócio</option>
+            <option value="WITHDRAWAL">Retirar dinheiro do caixa (sócio)</option>
             <option value="EXPENSE">Despesa operacional</option>
             <option value="DISBURSEMENT">Desembolso de empréstimo</option>
           </Select>
