@@ -212,6 +212,7 @@ export const usersService = {
   },
 
   async resetPassword(userId: string, input: PasswordResetInput, actorId: string, ip?: string, userAgent?: string) {
+    if (userId === actorId) throw new ForbiddenError("Altere sua própria senha em Meu perfil", "SELF_PASSWORD_RESET_DENIED");
     const user = await prisma.user.findUnique({ where: { id: userId, deletedAt: null } });
     if (!user) {
       throw new NotFoundError("Usuário não encontrado", "USER_NOT_FOUND");
