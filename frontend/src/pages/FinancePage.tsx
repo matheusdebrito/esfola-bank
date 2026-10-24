@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/hooks/use-toast";
 import { brl, dateTimeBr } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Banknote, Landmark, Plus, RefreshCw, Undo2 } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Banknote, Landmark, Plus, RefreshCw, Undo2, Minus, ReceiptText, Wallet, ArrowRight } from "lucide-react";
 
 type FinanceOverview = {
   initialized: boolean;
@@ -55,6 +56,7 @@ function toIsoDayEnd(date: string) { return new Date(date + "T23:59:59.999-03:00
 export default function FinancePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: currentUser } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => (await api.get("/api/v1/auth/me")).data.data.user as { role: string },
@@ -72,6 +74,30 @@ export default function FinancePage() {
   const [page, setPage] = useState(1);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  function openMovement(type: FinanceEntryType) {
+    setKind(type);
+    setAmount("");
+    setDescription("");
+    setLoanId("");
+    setShowEntryForm(true);
+  }
+
+  useEffect(() => {
+    if (!mayWrite) return;
+    const action = searchParams.get("action")?.toUpperCase();
+    if (!action || !["CONTRIBUTION", "WITHDRAWAL", "EXPENSE", "DISBURSEMENT"].includes(action)) return;
+    openMovement(action as FinanceEntryType);
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.delete("action");
+      return next;
+    }, { replace: true });
+  }, [mayWrite, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (showEntryForm) document.getElementById("cash-movement-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showEntryForm, kind]);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["finance"] });
   const onError = (error: unknown) => toast({ title: "Operação não concluída", description: getApiErrorMessage(error, "Verifique os dados informados."), variant: "destructive" });
 
@@ -174,10 +200,9 @@ export default function FinancePage() {
 
   const rows = movements?.items ?? [];
   const cashCards = [
-    { name: "Capital disponível", value: data.availableBalance, detail: "Saldo conferido + entradas − saídas", Icon: Landmark },
-    { name: "Recebimentos", value: data.received, detail: "Pagamentos não estornados desde a abertura", Icon: ArrowDownLeft },
-    { name: "Desembolsos", value: data.disbursements, detail: "Principal efetivamente entregue", Icon: ArrowUpRight },
-    { name: "Resultado operacional de caixa", value: data.operationalCashResult, detail: "Juros e mora recebidos − despesas", Icon: Banknote },
+    { name: "Recebimentos", value: data.received, detail: "Pagamentos confirmados desde a abertura", Icon: ArrowDownLeft },
+    { name: "Desembolsos", value: data.disbursements, detail: "Principal efetivamente entregue aos clientes", Icon: ArrowUpRight },
+    { name: "Resultado operacional de caixa", value: data.operationalCashResult, detail: "Juros e encargos recebidos menos despesas", Icon: Banknote },
   ];
   return <div className="space-y-6 pb-8">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -190,12 +215,36 @@ export default function FinancePage() {
         <Plus className="mr-1 h-4 w-4" /> {showEntryForm ? "Fechar lançamento" : "Nova movimentação"}
       </Button>}
     </header>
-    <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-      {cashCards.map(({ name, value, detail, Icon }) => <Card key={name} className="min-w-0 rounded-2xl p-4">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-xs text-muted-foreground">{name}</p><Icon className="h-4 w-4 shrink-0 text-primary"/>
+    <section aria-label="Saldo do caixa e ações" className="rounded-2xl bg-[#14243B] p-5 text-white shadow-sm sm:p-7">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+        <Wallet className="h-5 w-5 text-amber-300" aria-hidden /> Dinheiro disponível no caixa
+      </div>
+      <p className="mt-3 break-words text-[clamp(2rem,7vw,3.5rem)] font-bold leading-tight tracking-tight tabular-nums">
+        {brl(data.availableBalance ?? 0)}
+      </p>
+      <p className="mt-2 max-w-xl text-sm text-slate-300">
+        Saldo registrado para novos empréstimos. Considere os compromissos futuros e confirme os valores com o caixa real.
+      </p>
+      {mayWrite && <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <button type="button" onClick={() => openMovement("CONTRIBUTION")}
+          className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
+          <Plus className="h-4 w-4 shrink-0" aria-hidden /> Adicionar dinheiro
+        </button>
+        <Button onClick={() => openMovement("WITHDRAWAL")} variant="outline" className="min-w-0 border-white/30 bg-white/10 px-3 text-white hover:bg-white/20">
+          <Minus className="h-4 w-4" aria-hidden /> Retirar dinheiro
+        </Button>
+        <Button onClick={() => openMovement("EXPENSE")} variant="outline" className="col-span-2 min-w-0 border-white/30 bg-white/10 px-3 text-white hover:bg-white/20">
+          <ReceiptText className="h-4 w-4" aria-hidden /> Registrar despesa
+        </Button>
+      </div>}
+    </section>
+    <section aria-label="Indicadores financeiros" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {cashCards.map(({ name, value, detail, Icon }) => <Card key={name} className="min-w-0 rounded-2xl p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium text-muted-foreground">{name}</p>
+          <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden />
         </div>
-        <p className={"mt-3 break-words text-lg font-semibold tabular-nums sm:text-xl " + ((value ?? 0) < 0 ? "text-destructive" : "")}>{brl(value ?? 0)}</p>
+        <p className={"mt-3 break-words text-xl font-semibold tabular-nums sm:text-2xl " + ((value ?? 0) < 0 ? "text-destructive" : "")}>{brl(value ?? 0)}</p>
         <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
       </Card>)}
     </section>
@@ -212,9 +261,9 @@ export default function FinancePage() {
       </Card>)}
     </div>
 
-    {mayWrite && showEntryForm && <Card className="space-y-4 p-5">
+    {mayWrite && showEntryForm && <Card id="cash-movement-form" className="scroll-mt-4 space-y-4 p-5">
       <div><h2 className="text-lg font-semibold">Registrar movimentação</h2>
-        <p className="text-xs text-muted-foreground">Pagamentos recebidos são registrados automaticamente pelo módulo Pagamentos. Não os lance novamente aqui.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Pagamentos dos clientes entram automaticamente pelo módulo <Link to="/payments" className="font-semibold text-primary underline-offset-2 hover:underline">Recebimentos <ArrowRight className="inline h-3 w-3" /></Link>. Não os registre novamente como aporte.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -242,8 +291,13 @@ export default function FinancePage() {
           <Input id="financeDescription" maxLength={500} placeholder="Ex.: tarifa bancária, aporte do sócio, transferência ao cliente..." value={description} onChange={e => setDescription(e.target.value)}/>
         </div>
       </div>
-      <Button disabled={mutationEntry.isPending || !description.trim() || (kind === "DISBURSEMENT" ? !selectedLoan : !(moneyValue(amount) && moneyValue(amount)! > 0))} onClick={() => mutationEntry.mutate()}>
-        <Plus className="mr-2 h-4 w-4"/>{mutationEntry.isPending ? "Registrando..." : "Registrar movimentação"}
+      <Button disabled={mutationEntry.isPending || !description.trim() || (kind === "DISBURSEMENT" ? !selectedLoan : !(moneyValue(amount) && moneyValue(amount)! > 0))}
+        onClick={() => {
+          const total = kind === "DISBURSEMENT" ? selectedLoan?.principalAmount : moneyValue(amount);
+          if (kind !== "CONTRIBUTION" && total && !window.confirm("Confirma a saída de " + brl(total) + " do caixa?")) return;
+          mutationEntry.mutate();
+        }}>
+        <Plus className="mr-2 h-4 w-4"/>{mutationEntry.isPending ? "Registrando..." : kind === "CONTRIBUTION" ? "Adicionar ao caixa" : kind === "WITHDRAWAL" ? "Confirmar retirada" : kind === "EXPENSE" ? "Registrar despesa" : "Registrar desembolso"}
       </Button>
     </Card>}
 

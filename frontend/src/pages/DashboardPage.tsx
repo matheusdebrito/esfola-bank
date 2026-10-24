@@ -162,6 +162,27 @@ export default function DashboardPage() {
       {isPending ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Carregando indicadores">
         {[0, 1, 2, 3].map(index => <Card key={index} className="h-32 animate-pulse bg-muted" />)}
       </div> : <>
+        {showFinance && finance && <section aria-label="Capital disponível e ações de caixa" className="flex flex-col gap-4 rounded-2xl border border-[#203957] bg-[#14243B] p-5 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <Landmark className="h-4 w-4 text-amber-300" aria-hidden /> Caixa da empresa
+            </p>
+            <p className="mt-2 text-sm text-slate-200">{finance.initialized ? "Dinheiro disponível para novos empréstimos" : "Caixa ainda não configurado"}</p>
+            {finance.initialized
+              ? <p className="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">{brl(finance.availableBalance ?? 0)}</p>
+              : <p className="mt-2 text-sm text-amber-200">Informe seu saldo inicial para acompanhar entradas e saídas.</p>}
+            {finance.initialized && <p className="mt-2 text-xs text-slate-400">Saldo contabilizado; confira compromissos futuros antes de emprestar.</p>}
+          </div>
+          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            {can("finance:write") && finance.initialized && <>
+              <Link to="/finance?action=CONTRIBUTION" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-semibold text-[#14243B] hover:bg-slate-100">+ Adicionar dinheiro</Link>
+              <Link to="/finance?action=WITHDRAWAL" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/30 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/20">− Retirar dinheiro</Link>
+            </>}
+            <Link to="/finance" className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-white/30 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/20">
+              {finance.initialized ? "Ver extrato" : "Configurar caixa"} <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>}
         <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Metric title="Recebido no período" value={brl(info?.receivedTotal ?? 0)} description="Entradas confirmadas" Icon={TrendingUp} variant="positive" />
           <Metric title="Total vencido" value={brl(info?.overdueAmount ?? 0)} description="Em aberto, incluindo encargos" Icon={AlertTriangle} variant="warning" />
@@ -176,11 +197,7 @@ export default function DashboardPage() {
           {(info?.overdueClients ?? 0) > 0 && <Link to="/defaults" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100">
             <CircleAlert className="h-3.5 w-3.5" aria-hidden /> {info?.overdueClients ?? 0} cliente(s) em atraso <ArrowRight className="h-3 w-3" />
           </Link>}
-          {showFinance && finance && <Link to="/finance" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-800 hover:bg-blue-100">
-            <Landmark className="h-3.5 w-3.5" aria-hidden />
-            {finance.initialized ? "Capital disponível: " + brl(finance.availableBalance ?? 0) : "Configurar caixa"}
-            <ArrowRight className="h-3 w-3" />
-          </Link>}
+
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,1fr)]">
           <Card className="rounded-2xl p-5">

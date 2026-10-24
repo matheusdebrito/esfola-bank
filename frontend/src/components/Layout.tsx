@@ -128,10 +128,10 @@ export default function Layout() {
           "fixed inset-y-0 left-0 z-50 flex w-[min(310px,87vw)] flex-col bg-[#13243C] text-white shadow-2xl transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-[252px] lg:shrink-0 lg:translate-x-0 lg:shadow-none",
           menuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}>
-        <div className="flex h-[88px] shrink-0 items-center justify-between gap-3 border-b border-white/10 px-5">
-          <Link to="/dashboard" className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm">
-              <img src="/logo-nova.jpg" alt="" className="h-full w-full object-contain" />
+        <div className="flex h-[100px] shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4">
+          <Link to="/dashboard" className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm" aria-hidden="true">
+              <img src="/logo-nova.jpg" alt="" className="absolute left-1/2 top-1/2 h-[125%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain" />
             </div>
             <span className="min-w-0 leading-tight">
               <span className="block text-[15px] font-bold tracking-tight">Esfola Bank</span>
