@@ -143,6 +143,23 @@ describe("livro-caixa e resultado financeiro (PostgreSQL)", () => {
       .rejects.toMatchObject({ code: "FINANCE_ENTRY_ALREADY_REVERSED" });
   });
 
+  it("filtra o histórico completo por tipo sem perder paginação e estornos", async () => {
+    const all = await financeService.list({ page: 1, pageSize: 20, type: "ALL" });
+    const contributions = await financeService.list({ page: 1, pageSize: 20, type: "CONTRIBUTION" });
+    const withdrawals = await financeService.list({ page: 1, pageSize: 20, type: "WITHDRAWAL" });
+    const payments = await financeService.list({ page: 1, pageSize: 20, type: "PAYMENT" });
+    expect(all.meta.total).toBeGreaterThan(contributions.meta.total);
+    expect(contributions.meta.total).toBe(1);
+    expect(contributions.items.every(entry => entry.type === "CONTRIBUTION")).toBe(true);
+    expect(withdrawals.meta.total).toBe(1);
+    expect(withdrawals.items[0]?.reversed).toBe(true);
+    expect(payments.items.some(entry => entry.id === registeredPaymentId && entry.reversed)).toBe(true);
+    const paged = await financeService.list({ page: 2, pageSize: 1, type: "DISBURSEMENT" });
+    expect(paged.meta.total).toBe(2);
+    expect(paged.meta.totalPages).toBe(2);
+    expect(paged.items).toHaveLength(1);
+  });
+
   it("valida moedas e preserva rastreabilidade", async () => {
     expect(financeEntryCreateSchema.safeParse({ type: "EXPENSE", amount: 12.345, description: "Valor invalido" }).success).toBe(false);
     const count = await prisma.auditLog.count({ where: { action: { in: ["FINANCE_SETUP", "FINANCE_ENTRY_CREATE", "FINANCE_ENTRY_REVERSE"] } } });
