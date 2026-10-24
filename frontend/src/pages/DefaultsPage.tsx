@@ -102,7 +102,7 @@ export default function DefaultsPage() {
           {items.map(row => <Card key={row.id} className="min-w-0 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{row.clientName ?? "Cliente"}</p>
+                <p className="line-clamp-2 break-words text-sm font-semibold leading-snug">{row.clientName ?? "Cliente"}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{row.loanCode} · parcela #{row.number}</p>
                 <p className="mt-1 text-xs text-destructive">{row.daysOverdue} dias em atraso · {dateBr(row.dueDate)}</p>
               </div>

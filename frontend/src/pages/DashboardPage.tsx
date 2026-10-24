@@ -153,7 +153,7 @@ export default function DashboardPage() {
             <Input aria-label="Data inicial" type="date" value={customFrom} onChange={event => setCustomFrom(event.target.value)} className="w-full sm:w-36" />
             <Input aria-label="Data final" type="date" min={customFrom || undefined} value={customTo} onChange={event => setCustomTo(event.target.value)} className="w-full sm:w-36" />
           </>}
-          {can("loans:create") && <Link to="/loans?new=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:h-10">
+          {can("loans:create") && <Link to="/loans?new=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary lg:hidden px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:h-10">
             <Plus className="h-4 w-4" aria-hidden /> Novo empréstimo
           </Link>}
         </div>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               <div className="divide-y divide-border">
                 {debtRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{row.clientName}</p>
+                    <p className="line-clamp-2 break-words text-sm font-semibold leading-snug">{row.clientName}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · Venceu em {dateBr(row.dueDate)}</p>
                     <span className="mt-1 inline-block rounded-md bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">{row.daysOverdue} dias em atraso</span>
                   </div>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
               <div className="divide-y divide-border">
                 {dueRows.map((row) => <div key={row.loanId + ":" + row.installmentNumber} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{row.clientName}</p>
+                    <p className="line-clamp-2 break-words text-sm font-semibold leading-snug">{row.clientName}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Parcela #{row.installmentNumber} · {dateBr(row.dueDate)}</p>
                   </div>
                   <div className="shrink-0 text-right">
