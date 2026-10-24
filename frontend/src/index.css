@@ -120,3 +120,21 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   html.dark input:not([type="checkbox"]):not([type="radio"]), html.dark select, html.dark textarea { color-scheme: dark; }
   html.dark [class~="bg-[#F2EFE9]"], html.dark [class~="bg-[#EEF2F0]"], html.dark [class~="bg-[#f3f6fa]"] { background-color: #25292D; }
 }
+
+/* Painel premium: componentes existentes preservam a semantica, mesmo com classes antigas. */
+html.dark body { background: #111316; }
+html.dark .recharts-cartesian-grid line { stroke: #343A40; }
+html.dark .recharts-default-tooltip { background-color: #202428 !important; border: 1px solid #41464D !important; color: #E6E8EB !important; border-radius: 12px; }
+html.dark .recharts-tooltip-label, html.dark .recharts-tooltip-item { color: #E6E8EB !important; }
+html.dark .recharts-legend-item-text { color: #C4CBD0 !important; }
+html.dark [class~="bg-green-50"], html.dark [class~="bg-emerald-50"] { background-color: #19382E; }
+html.dark [class~="bg-rose-50"], html.dark [class~="bg-red-50"] { background-color: #42292D; }
+html.dark [class~="bg-[#F4E6C9]"] { background-color: #493D2B; }
+html.dark [class~="text-[#74551C]"] { color: #E3C48E; }
+html.dark [class~="text-[#111e33]"], html.dark [class~="text-[#101b2e]"] { color: #E6E8EB; }
+html.dark [class~="text-[#627086]"], html.dark [class~="text-[#69778a]"] { color: #B0B8BF; }
+html.dark [class~="text-slate-950"] { color: #E6E8EB; }
+html.dark [class~="bg-slate-50"] { background: #24272B; }
+html.dark [class~="border-slate-200"] { border-color: #35393F; }
+html.dark [class~="bg-white"] { background: #1D2024; }
+html.dark button, html.dark a { transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
