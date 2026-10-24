@@ -178,6 +178,17 @@ describe("livro-caixa e resultado financeiro (PostgreSQL)", () => {
     }
   });
 
+  it("extrato de caixa inclui saldo após evento e responsável, mesmo com filtros", async () => {
+    const history = await financeService.list({ page: 1, pageSize: 100, type: "ALL" });
+    const latest = history.items[0];
+    expect(latest?.userName).toBe("Gestor");
+    expect(latest?.balanceAfter).toBeCloseTo((await financeService.overview()).availableBalance ?? 0, 2);
+    const filtered = await financeService.list({ page: 1, pageSize: 100, type: "WITHDRAWAL" });
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.items[0].reversed).toBe(true);
+    expect(typeof filtered.items[0].balanceAfter).toBe("number");
+  });
+
   it("valida moedas e preserva rastreabilidade", async () => {
     expect(financeEntryCreateSchema.safeParse({ type: "EXPENSE", amount: 12.345, description: "Valor invalido" }).success).toBe(false);
     const count = await prisma.auditLog.count({ where: { action: { in: ["FINANCE_SETUP", "FINANCE_ENTRY_CREATE", "FINANCE_ENTRY_REVERSE"] } } });
