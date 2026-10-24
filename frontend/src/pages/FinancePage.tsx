@@ -226,9 +226,10 @@ export default function FinancePage() {
         Saldo registrado para novos empréstimos. Considere os compromissos futuros e confirme os valores com o caixa real.
       </p>
       {mayWrite && <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        <Button onClick={() => openMovement("CONTRIBUTION")} className="min-w-0 bg-white px-3 text-[#14243B] hover:bg-slate-100">
-          <Plus className="h-4 w-4" aria-hidden /> Adicionar dinheiro
-        </Button>
+        <button type="button" onClick={() => openMovement("CONTRIBUTION")}
+          className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
+          <Plus className="h-4 w-4 shrink-0" aria-hidden /> Adicionar dinheiro
+        </button>
         <Button onClick={() => openMovement("WITHDRAWAL")} variant="outline" className="min-w-0 border-white/30 bg-white/10 px-3 text-white hover:bg-white/20">
           <Minus className="h-4 w-4" aria-hidden /> Retirar dinheiro
         </Button>
