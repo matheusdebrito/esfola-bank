@@ -36,41 +36,20 @@ export default function LoginPage() {
   }
 
   return <div className="flex min-h-[100dvh] bg-background">
-    <section className="relative hidden w-[48%] flex-col justify-between overflow-hidden bg-[#101114] px-10 py-12 text-white lg:flex xl:px-16" aria-label="Esfola Bank">
+    <section className="relative hidden w-[48%] flex-col items-center justify-center overflow-hidden bg-[#101114] px-10 py-12 text-white lg:flex xl:px-16" aria-label="Esfola Bank">
       <div className="pointer-events-none absolute -right-36 -top-32 h-[440px] w-[440px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -right-14 -top-10 h-[300px] w-[300px] rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -bottom-48 -left-36 h-[520px] w-[520px] rounded-full bg-[#CDB78A]/10 blur-3xl" />
-      <div className="relative flex flex-wrap items-center gap-5">
-        <div className="flex h-[148px] w-[148px] shrink-0 items-center justify-center" aria-hidden="true">
-          <img src="/favicon-corvo.svg" alt="" className="h-[132px] w-[132px] object-contain" />
-        </div>
-        <div>
-          <p className="text-lg font-bold tracking-tight">Esfola Bank</p>
-          <p className="mt-0.5 text-xs font-medium uppercase tracking-[.17em] text-[#B6B7BA]">Gestão de empréstimos</p>
-        </div>
+      <div className="relative flex w-full max-w-[420px] flex-col items-center justify-center gap-4 text-center">
+        <img src="/favicon-corvo.svg" alt="Símbolo do corvo Esfola Bank" className="h-[240px] w-[240px] object-contain drop-shadow-[0_12px_35px_rgba(212,173,89,.2)]" />
+        <div className="font-serif text-[clamp(3.5rem,6vw,5.5rem)] font-bold leading-none tracking-tight text-[#EBC77D]">ESFOLA</div>
+        <div className="text-xl font-semibold tracking-[.55em] text-[#E5C582]">BANK</div>
       </div>
-      <div className="relative max-w-[560px] space-y-8">
-        <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.06] px-4 py-2 text-xs font-semibold text-[#E9EEE9]">
-          <CheckCircle2 className="h-4 w-4 text-[#CDB78A]" /> Sua operação sob controle
-        </p>
-        <h1 className="text-4xl font-semibold leading-[1.13] tracking-tight xl:text-5xl">
-          Mais clareza.<br />
-          <span className="text-[#DEC99D]">Melhores decisões.</span>
-        </h1>
-        <p className="max-w-[430px] text-base leading-relaxed text-[#F7F4EC]">
-          Organize empréstimos, acompanhe recebimentos e priorize cobranças em um único lugar.
-        </p>
-        <div className="grid gap-4 border-t border-white/15 pt-7 sm:grid-cols-2">
-          <div className="flex items-start gap-3"><ChartNoAxesCombined className="mt-1 h-5 w-5 shrink-0 text-[#CDB78A]" /><div><p className="text-sm font-semibold">Visão da carteira</p><p className="mt-1 text-xs leading-relaxed text-[#B6B7BA]">Indicadores claros para o dia a dia.</p></div></div>
-          <div className="flex items-start gap-3"><ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[#CDB78A]" /><div><p className="text-sm font-semibold">Operação organizada</p><p className="mt-1 text-xs leading-relaxed text-[#B6B7BA]">Acessos e registros de movimentações.</p></div></div>
-        </div>
-      </div>
-      <p className="relative text-xs text-slate-500">Esfola Bank · Acesso restrito</p>
     </section>
 
     <main className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-10">
       <div className="w-full max-w-[425px]">
-        <div className="mb-8 flex items-center gap-4 lg:hidden">
+        <div className="mb-8 flex items-center justify-center gap-4 lg:hidden">
           <div className="flex h-[116px] w-[116px] shrink-0 items-center justify-center" aria-hidden="true">
             <img src="/favicon-corvo.svg" alt="" className="h-[105px] w-[105px] object-contain" />
           </div>
@@ -81,7 +60,7 @@ export default function LoginPage() {
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">Entre na sua conta</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Informe suas credenciais para acessar sua operação.</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-[#49463F] bg-[#191B1E] p-5 shadow-[0_20px_50px_rgba(0,0,0,.3)] sm:p-7">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input id="email" type="email" autoComplete="username" placeholder="seu@email.com" value={email}
@@ -93,7 +72,7 @@ export default function LoginPage() {
               value={password} onChange={event => setPassword(event.target.value)} required disabled={loading} />
           </div>
           <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Autenticando…" : <>Entrar na plataforma <ArrowRight className="h-4 w-4" /></>}
+            {loading ? "Autenticando…" : <>Entrar <ArrowRight className="h-4 w-4" /></>}
           </Button>
         </form>
         <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
