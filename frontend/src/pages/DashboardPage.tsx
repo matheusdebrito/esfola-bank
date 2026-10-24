@@ -25,10 +25,10 @@ type CashFlow = { initialized: boolean; months: CashMonth[] };
 type LoanStatus = { current: number; soon: number; overdue: number; total: number; activePrincipal: number };
 type Movement = { id: string; type: string; amount: number; description: string; date: string; reversed: boolean };
 const cards: { label: string; hint: string; color: string; iconBg: string; iconColor: string; Icon: LucideIcon }[] = [
-  { label: "Caixa disponível", hint: "Para novos empréstimos", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#1B4D3D]", iconColor: "text-[#62D9A0]", Icon: Wallet },
-  { label: "Capital emprestado", hint: "Principal dos empréstimos ativos", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#57442B]", iconColor: "text-[#E0B466]", Icon: Coins },
-  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#1B4D3D]", iconColor: "text-[#62D9A0]", Icon: TrendingUp },
-  { label: "Em atraso", hint: "Parcelas vencidas", color: "border-[#30363C] bg-[#1A2021]", iconBg: "bg-[#522D30]", iconColor: "text-[#FC7676]", Icon: CircleAlert },
+  { label: "Caixa disponível", hint: "Disponível para empréstimos", color: "border-[#2D3337] bg-[#161C1E]", iconBg: "bg-[#205941]", iconColor: "text-[#61D6A4]", Icon: Wallet },
+  { label: "Capital emprestado", hint: "Empréstimos ativos", color: "border-[#2D3337] bg-[#161C1E]", iconBg: "bg-[#66502C]", iconColor: "text-[#F1C16B]", Icon: Coins },
+  { label: "Recebimentos do período", hint: "Pagamentos confirmados", color: "border-[#2D3337] bg-[#161C1E]", iconBg: "bg-[#205941]", iconColor: "text-[#61D6A4]", Icon: TrendingUp },
+  { label: "Em atraso", hint: "Parcelas vencidas", color: "border-[#2D3337] bg-[#161C1E]", iconBg: "bg-[#642B31]", iconColor: "text-[#FF7373]", Icon: CircleAlert },
 ];
 const periods = [
   { value: "30d", label: "Últimos 30 dias" },
@@ -88,7 +88,7 @@ function Metric({ index, value, subtitle }: { index: number; value: string; subt
       </span>
       <div className="min-w-0 flex-1">
         <p className={"text-[11px] font-medium " + (index === 3 ? "text-[#F08C88]" : "text-[#BCC5C8]")}>{info.label}</p>
-        <p className={"mt-1 break-words text-[clamp(.9rem,1.3vw,1.24rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#59D19C]" : index === 1 ? "text-[#E6B56D]" : index === 3 ? "text-[#F07872]" : "text-[#59D19C]")}>{value}</p>
+        <p className={"mt-1 break-words text-[clamp(1.1rem,1.45vw,1.45rem)] font-extrabold tracking-[-.04em] tabular-nums " + (index === 0 ? "text-[#59D19C]" : index === 1 ? "text-[#E6B56D]" : index === 3 ? "text-[#F07872]" : "text-[#59D19C]")}>{value}</p>
         <p className="mt-1.5 text-[11px] leading-snug text-slate-600">{subtitle ?? info.hint}</p>
       </div>
     </div>
@@ -198,10 +198,10 @@ export default function DashboardPage() {
         <Link to="/defaults"><Metric index={3} value={brl(info?.overdueAmount ?? 0)} subtitle={(info?.overdueInstallments ?? 0) + " parcela(s) atrasada(s)"} /></Link>
       </section>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.55fr_0.95fr]">
-        <Card className="min-w-0 rounded-xl border border-slate-200 p-4 shadow-[0_2px_16px_-10px_#123] sm:p-5">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.7fr_1fr]">
+        <Card className="min-w-0 rounded-xl border border-[#2D3337] bg-[#151A1D] p-4 shadow-[0_10px_35px_rgba(0,0,0,.14)] sm:p-5">
           <div className="mb-5 flex items-start justify-between gap-2">
-            <div><h2 className="text-base font-bold tracking-tight text-slate-900">Resumo financeiro</h2>
+            <div><h2 className="text-base font-bold tracking-tight text-slate-900">Fluxo de pagamentos</h2>
               <p className="mt-1 text-[11px] text-slate-500">Entradas, saídas e evolução do saldo real</p></div>
             <span className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] text-slate-600">Últimos 6 meses</span>
           </div>
@@ -213,9 +213,9 @@ export default function DashboardPage() {
                   <XAxis dataKey="month" tickFormatter={monthLabel} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#AEB8BE" }} dy={9} />
                   <YAxis tickFormatter={moneyTick} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#AEB8BE" }} />
                   <Tooltip formatter={(v: number, name: string) => [brl(v), name]} labelFormatter={monthLabel} />
-                  <Bar dataKey="incoming" name="Entradas" fill="#268566" radius={[3, 3, 0, 0]} maxBarSize={25} />
-                  <Bar dataKey="outgoing" name="Saídas" fill="#B64B45" radius={[3, 3, 0, 0]} maxBarSize={25} />
-                  <Line type="monotone" dataKey="balance" name="Saldo do caixa" stroke="#B98C3F" strokeWidth={2.5} dot={{ r: 3, fill: "#2789ef" }} activeDot={{ r: 5 }} />
+                  <Bar dataKey="incoming" name="Entradas" fill="#43B68A" radius={[3, 3, 0, 0]} maxBarSize={25} />
+                  <Bar dataKey="outgoing" name="Saídas" fill="#D9A950" radius={[3, 3, 0, 0]} maxBarSize={25} />
+                  <Line type="monotone" dataKey="balance" name="Saldo do caixa" stroke="#E3B659" strokeWidth={2.5} dot={{ r: 3, fill: "#2789ef" }} activeDot={{ r: 5 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -229,8 +229,8 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="min-w-0 rounded-xl border border-slate-200 p-4 shadow-[0_2px_16px_-10px_#123] sm:p-5">
-          <CardTitle>Situação dos empréstimos</CardTitle>
-          <div className="grid items-center gap-3 sm:grid-cols-[minmax(170px,0.9fr)_minmax(0,1fr)]">
+          <CardTitle>Empréstimos por status</CardTitle>
+          <div className="grid items-center gap-3 lg:grid-cols-1 2xl:grid-cols-[minmax(170px,0.9fr)_minmax(0,1fr)]">
             <div className="relative mx-auto h-[220px] w-full max-w-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -259,9 +259,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <section aria-label="Acompanhamento operacional" className="grid gap-4 xl:grid-cols-3">
-        <Card className="min-w-0 rounded-xl border border-slate-200 p-4 sm:p-5">
-          <CardTitle href={hasFinance ? "/cash" : undefined}>Últimas movimentações de caixa</CardTitle>
+      <section aria-label="Acompanhamento operacional" className="grid gap-4 xl:grid-cols-2">
+        <Card className="min-w-0 rounded-xl border border-[#2D3337] bg-[#151A1D] p-4 shadow-[0_10px_35px_rgba(0,0,0,.14)] sm:p-5">
+          <CardTitle href={hasFinance ? "/cash" : undefined}>Últimos pagamentos e movimentações</CardTitle>
           {hasFinance && finance?.initialized ? movements?.items?.length ? <div className="divide-y divide-slate-100">
             {movements.items.map(m => <div key={m.id} className="flex items-center gap-2 py-3">
               <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-full " + (m.type === "PAYMENT" || m.type === "CONTRIBUTION" ? "bg-green-50 text-green-600" : "bg-rose-50 text-rose-600")}>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="min-w-0 rounded-xl border border-slate-200 p-4 sm:p-5">
-          <CardTitle href="/defaults">Clientes em atraso</CardTitle>
+          <CardTitle href="/defaults">Empréstimos em atraso</CardTitle>
           {overdue?.items?.length ? overdue.items.slice(0, 4).map(row => <DetailRow key={row.id}
             name={row.clientName ?? "Cliente"} amount={row.updatedRemainingBalance} sub={row.daysOverdue + " dias de atraso · Parcela " + row.number}
             href={"/loans/" + row.loanId} phoneUrl={waUrl(row)} />)
